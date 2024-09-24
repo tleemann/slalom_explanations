@@ -1,2 +1,2 @@
-# slalom_explanations
+# SLALOM: Faithful Surrogate Explanations for Transformers
 SLALOM Explanations for transformer models
