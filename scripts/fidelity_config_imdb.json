@@ -1,0 +1,13 @@
+{
+    "explanations": [
+        ["SLALOM", {"sgd_lr": 5e-3, "sgd_epochs": 60, "modes": ["value", "lin", "importance", "removal"], "n_samples": 5000, "seq_len": 2}],
+        ["SHAP", {"method": "kernel", "num_samples": 5000}], 
+        ["LIME", {"n_samples": 5000}],
+        ["InputGrad", {"use_ig": false, "times_input": false}],
+        ["InputGrad", {"use_ig": true, "times_input": false, "ig_steps": 30}]
+    ],
+    "metrics": ["insertion", "deletion", "removal"],
+    "model": ["Transformer", ["2024-05-14-16:05:12_distilgpt2_6_12", "2024-05-15-13:30:59_bert_6_12", "2024-05-14-22:21:59_distilbert_6_12"]],
+    "explanation_file": "test_explanations_faith_gpt2.pt",
+    "metrics_file": "metrics/metrics_500_"
+}
