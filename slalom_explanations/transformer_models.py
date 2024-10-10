@@ -1,5 +1,5 @@
 from transformers import DistilBertConfig, DistilBertTokenizer, DistilBertForSequenceClassification, BertTokenizerFast, \
-         GPT2ForSequenceClassification, GPT2Tokenizer, GPT2Config, BertConfig, BertForSequenceClassification
+         GPT2ForSequenceClassification, GPT2Tokenizer, GPT2Config, BertConfig, BertForSequenceClassification, RobertaForSequenceClassification, RobertaConfig, AutoTokenizer
 import torch
 import numpy as np
 import datasets
@@ -10,15 +10,14 @@ from slalom_explanations.utils import Logger, LoggerAttMat
 
 
 class DistilBert():
-    def __init__(self, dim: int=768, hidden_dim: int=3072, n_heads: int=12, n_layers: int=6) -> None:
-        self.config = DistilBertConfig(dim=dim,
-                                        hidden_dim=hidden_dim,
-                                        n_heads=n_heads,
-                                        n_layers=n_layers,
-                                        output_attentions=True,
-                                        output_hidden_states=True)
-        self.model = DistilBertForSequenceClassification(self.config)
-
+    def __init__(self, dim: int=768, hidden_dim: int=3072, n_heads: int=12, n_layers: int=6, pretrained=True) -> None:
+        self.config = DistilBertConfig(dim=dim, hidden_dim=hidden_dim, n_heads=n_heads, n_layers=n_layers,
+            output_attentions=False,output_hidden_states=False, pretrained=True)
+        if not pretrained:
+            self.model = DistilBertForSequenceClassification(self.config)
+        else:
+            self.model = DistilBertForSequenceClassification.from_pretrained("distilbert/distilbert-base-uncased")
+            self.model.distilbert.transformer.layer = self.model.distilbert.transformer.layer[:n_layers]
     def get_model(self) -> DistilBertForSequenceClassification:
         return self.model
     
@@ -32,9 +31,12 @@ class Bert():
                                 num_hidden_layers = n_layers,
                                 num_attention_heads = n_heads,
                                 intermediate_size = hidden_dim,
-                                output_attentions=True)
+                                output_attentions=False)
         if not pretrained:
+            ref_model = BertForSequenceClassification.from_pretrained("bert-base-uncased")
             self.model = BertForSequenceClassification(self.config)
+            self.model.bert.embeddings.position_embeddings.weight = ref_model.bert.embeddings.position_embeddings.weight
+            self.model.bert.embeddings.word_embeddings.weight = ref_model.bert.embeddings.word_embeddings.weight
         else:
             self.model = BertForSequenceClassification.from_pretrained("bert-base-uncased")
             self.model.bert.encoder.layer = self.model.bert.encoder.layer[:n_layers] #.word_embeddings.weight
@@ -45,14 +47,17 @@ class Bert():
 
 
 class GPT2():
-    def __init__(self, n_embd: int=768, n_head: int=12, n_inner: int=None, n_layer: int=12) -> None:
-        self.config = GPT2Config(n_embd=n_embd,
-                                n_head=n_head,
-                                n_inner=n_inner,
-                                n_layer=n_layer,
-                                output_attentions=True,
-                                output_hidden_states=True)
-        self.model = GPT2ForSequenceClassification(self.config)
+    def __init__(self, n_embd: int=768, n_head: int=12, n_inner: int=None, n_layer: int=12, pretrained=True) -> None:
+        tokenizer = AutoTokenizer.from_pretrained('gpt2', use_fast=True)
+        self.config = GPT2Config(n_embd=n_embd, n_head=n_head, n_inner=n_inner, n_layer=n_layer,
+                                output_attentions=False, output_hidden_states=False, pad_token_id=tokenizer.eos_token_id)
+        if not pretrained:                     
+            self.model = GPT2ForSequenceClassification(self.config)
+        else:
+            self.model = GPT2ForSequenceClassification.from_pretrained("gpt2")
+            self.model.transformer.h = self.model.transformer.h[:n_layer]
+            self.model.config.pad_token_id=tokenizer.eos_token_id
+            
 
     def get_model(self) -> GPT2ForSequenceClassification:
         return self.model
@@ -60,37 +65,31 @@ class GPT2():
     def set_model(self, model: GPT2ForSequenceClassification) -> None:
         self.model = model
 
+    
+class RoBERTa():
+    def __init__(self, dim: int=768, hidden_dim: int=3072, n_heads: int=12, n_layers: int=12, pretrained=True) -> None:
+        """ Note that pretrained == True will only use the n_layers argument and ignore other values. """
+        self.config =  RobertaConfig(hidden_size = dim,
+                        num_hidden_layers = n_layers,
+                        num_attention_heads = n_heads,
+                        intermediate_size = hidden_dim,
+                        output_attentions=False)
+        if not pretrained:
+            self.model = RobertaForSequenceClassification(self.config)
+        else:
+            self.model = RobertaForSequenceClassification.from_pretrained('FacebookAI/roberta-base')
+            self.model.roberta.encoder.layer = self.model.roberta.encoder.layer[:n_layers]
 
-class DistilGPT2():
-    def __init__(self, n_embd: int=768, n_head: int=12, n_inner: int=None, n_layer: int=6) -> None:
-        self.config = GPT2Config(
-            n_embd=n_embd,
-            n_head=n_head,
-            n_inner=n_inner,
-            n_layer=n_layer,
-            num_labels=2,
-            output_attentions=True,
-            output_hidden_states=True)
-        #self.model = GPT2LMHeadModel(self.config)
-        # fix model padding token id
-        self.config.pad_token_id = 50256
-        self.model = GPT2ForSequenceClassification(self.config)
-
-    def get_model(self) -> GPT2ForSequenceClassification:
+    def get_model(self) -> RobertaForSequenceClassification:
         return self.model
-
-    def set_model(self, model: GPT2ForSequenceClassification) -> None:
-        self.model = model
 
 
 class Trainer():
     def __init__(self, ds: datasets.dataset_dict.DatasetDict,
-                 model: Union[DistilBert, Bert, DistilGPT2, GPT2],
+                 model: Union[DistilBert, Bert, GPT2],
                  tokenizer: Union[DistilBertTokenizer, BertTokenizerFast, GPT2Tokenizer],
                  logger: Logger,
                  device: torch.device,
-                 logger_att_mat: LoggerAttMat,
-                 max_att_logs: int, 
                  max_seq_len: int,
                  tokenization_required: bool = True) -> None:
         self.device = device
@@ -105,11 +104,9 @@ class Trainer():
         else:
             self.ds_tokenized = ds
         self.ds_tokenized.set_format(type="torch")
-        self.logger_att_mat = logger_att_mat
-        self.max_att_logs = max_att_logs
         if isinstance(self.model, GPT2ForSequenceClassification):
             print('GPT model detected, resizing token embeddings')
-            self.model.resize_token_embeddings(len(self.tokenizer))
+            #self.model.resize_token_embeddings(len(self.tokenizer))
             self.model.config.pad_token_id = self.model.config.eos_token_id
 
     def preprocess_function_maxlen(self, examples):
@@ -126,11 +123,12 @@ class Trainer():
         dataloader_test = torch.utils.data.DataLoader(self.ds_tokenized['test'], batch_size=batch_size, shuffle=False)
         self.model = self.model.to(self.device)
         self.model.zero_grad()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=lr)
+        print("lr=", lr)
+        optimizer = torch.optim.RMSprop(self.model.parameters(), lr=lr)
         print(next(iter(self.model.parameters())).device)
         print('Starting training')
         steps = start_steps
-        for epoch in range(start_epoch, start_epoch+epochs):
+        for epoch in range(start_epoch, start_epoch+int(max(epochs,1))):
             self.model.train()
             accuracies = []
             for batch_nr, batch in tqdm(enumerate(dataloader_train), total=len(dataloader_train)):
@@ -157,12 +155,16 @@ class Trainer():
                 accuracy = torch.sum(predictions == labels) / len(labels)
                 accuracies.append(accuracy.item())
                 steps += 1
+                if steps/len(dataloader_train) > start_epoch+epochs:
+                    print(f"Training done for {epochs} eps.")
+                    break
     
             train_acc = np.mean(accuracies)
             if epoch % test_interval == 0:
                 test_acc = self.test(dataloader_test=dataloader_test, epoch_num=epoch, log_attn = False)
                 print(f'Epoch {epoch}, Train Accuracy: {train_acc}: Test Accuracy: {test_acc}')
                 self.last_acc = test_acc
+        
         print('Finished training')
         print('-'*50)
         return steps
@@ -179,16 +181,9 @@ class Trainer():
                 attention_mask = batch['attention_mask'].to(self.device)
                 labels = batch['label'].to(self.device)
                 outputs = self.model(input_ids, attention_mask=attention_mask, labels=labels)
-                if epoch_num == 0:
-                    self.logger_att_mat.save_test_tokens(batch_nr=batch_nr, input_ids=batch['input_ids'])
-                if (log_attn and batch_nr < self.max_att_logs) or (log_attn and self.max_att_logs == -1):
-                    pass
-                    #self.logger_att_mat.save_att_mat(epoch=epoch_num, batch_nr=batch_nr, model_output=self.model(input_ids), input_ids=batch['input_ids'])
                 predictions = torch.argmax(outputs['logits'], dim=-1)
                 accuracy = torch.sum(predictions == labels) / len(labels)
                 accuracies.append(accuracy.item())
-            if log_attn and self.logger_att_mat is not None:
-                self.logger_att_mat.save_model(self.model, epoch_num)
         return np.mean(accuracies)
 
     def evaluate(self, ds_eval: datasets.arrow_dataset.Dataset, batch_size: int=1) -> float:

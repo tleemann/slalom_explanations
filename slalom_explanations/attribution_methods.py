@@ -1,8 +1,8 @@
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn import svm
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression, LinearRegression
+from slalom_explanations.slalom_helpers import sample_dataset
 from transformers import AutoTokenizer, BertTokenizerFast, BertForSequenceClassification
 import datasets
 import numpy as np
@@ -15,8 +15,8 @@ import torch.nn.functional as F
 from lime.lime_text import LimeTextExplainer
 import torch.nn.functional as F
 
-from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM
-from slalom_explanations.transformer_models import Bert, DistilBert, GPT2, DistilGPT2
+from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM, fit_iter_rand
+from slalom_explanations.transformer_models import Bert, DistilBert, GPT2
 
 #from line_profiler import LineProfiler
 
@@ -214,6 +214,7 @@ class NaiveBayesEstim():
         return dict(zip(feature_names[top_indices_pos], (self.coef_[top_indices_pos])))
     
 
+
 class ZeroExplanation():
     """ A dummy class that only returns zeros as explanations. Can be used as a baseline in removal benchmarks. """
     def __init__(self, model=None):
@@ -406,7 +407,7 @@ class LIMEExplanation():
 
 class SLALOMLocalExplanantions():
     def __init__(self, model, n_samples=200, device="cuda", modes=["lin"], sgd_batch_size=128, sgd_epochs=10, sgd_lr= 5e-3,
-            seq_len = 3, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False):
+            seq_len = 3, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True):
         """
             seq_len: length of the sequences on which the SLALOM model should be estimated.
             modes: list of which part of the SLALOM scores should be returned. {value, importance, removal, lin}
@@ -424,6 +425,8 @@ class SLALOMLocalExplanantions():
         self.seq_len = seq_len
         self.sampling_strategy = sampling_strategy
         self.fix_importances = fix_importances
+        self.pad_token_id=pad_token_id
+        self.fit_sgd = fit_sgd
 
     def get_signed_importance_for_tokens(self, input_ids: list, vs_scores=False):
         unique_list, return_inverse = torch.tensor(input_ids).unique(return_inverse=True)
@@ -438,11 +441,15 @@ class SLALOMLocalExplanantions():
             org_inp = org_inp.reshape(1,-1)
             org_score = self.model(org_inp.to(self.device), attention_mask = torch.ones_like(org_inp).to(self.device))["logits"].detach().cpu()
             org_target = org_score[:,1]-org_score[:,0]
-            example_model = MyLittleSLALOM(unique_list, self.device, v_init=org_target, fix_importances=self.fix_importances).to(self.device)
+            example_model = MyLittleSLALOM(unique_list, self.device, v_init=org_target, fix_importances=self.fix_importances, pad_token_id=self.pad_token_id).to(self.device)
         else:
-            example_model = MyLittleSLALOM(unique_list, self.device, fix_importances=self.fix_importances).to(self.device)
-        v_scores, s_scores, example_model = fit_sgd_rand(example_model, self.model, unique_list, torch.tensor(input_ids), num_eps=self.sg_epochs, 
-                seq_len=3, lr=self.sgd_lr, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy)
+            example_model = MyLittleSLALOM(unique_list, self.device, fix_importances=self.fix_importances, pad_token_id=self.pad_token_id).to(self.device)
+        if self.fit_sgd:
+            v_scores, s_scores, example_model = fit_sgd_rand(example_model, self.model, unique_list, torch.tensor(input_ids), num_eps=self.sg_epochs, 
+                    seq_len=3, lr=self.sgd_lr, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id)
+        else: # iterative
+            v_scores, s_scores, example_model = fit_iter_rand(example_model, self.model, unique_list, torch.tensor(input_ids),
+                    seq_len=3, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id)
         ret_list = []
         for m in self.mode:
             if m == "lin":
@@ -452,7 +459,6 @@ class SLALOMLocalExplanantions():
             elif m == "removal":
                 alpha_i = torch.softmax(s_scores, dim=-1)
                 org_scores = torch.sum(alpha_i*v_scores)
-                #print("computing removal with org=", org_scores)
                 prescore = alpha_i*(v_scores-org_scores)/(1.0 - alpha_i)
             else:
                 prescore = s_scores
@@ -462,12 +468,38 @@ class SLALOMLocalExplanantions():
             ret_list.append(attribs.cpu().numpy())
         return np.stack(ret_list)
 
+class LinearRegressionDeletion:
+    def __init__(self, model, n_samples=200, device="cuda", sampling_strategy="deletion", pad_token_id=0, use_cls=True, batch_size_sample=32):
+        self.model = model.to(device)
+        self.n_samples = n_samples
+        self.device = device
+        self.mode = sampling_strategy
+        self.pad_token_id = pad_token_id
+        self.use_cls = use_cls
+        self.batch_size_sample=32
+
+    def get_signed_importance_for_tokens(self, input_ids: list):
+        unique_list, return_inverse = torch.tensor(input_ids).unique(return_inverse=True)
+        device = self.device
+        inps_list, mask_list, bin_list, output_list = [], [], [], []
+        for i in range(0, self.n_samples, self.batch_size_sample):
+            _, bin_features, _, outputs = sample_dataset(self.batch_size_sample, self.model, unique_list, torch.tensor(input_ids), seq_len=3, use_cls=self.use_cls, fixed_len=True, 
+                                                                device=self.device, mode=self.mode, pad_token_id=self.pad_token_id)
+            output_list.append(outputs)
+            bin_list.append(bin_features)
+
+        binary_features = torch.cat(bin_list, dim=0)
+        labels = torch.cat(output_list, dim=0)
+        mylr = LinearRegression(fit_intercept=False)
+        mylr.fit(binary_features.detach().cpu(), labels.cpu())
+        return mylr.coef_[return_inverse.numpy()]
 
 class LRPExplanation():
     """ LRP for transformers. """
     def __init__(self, modellrp, device="cuda", use_cls=True, normalize=True, mode="logit"):
         #transform the model 
         self.mymodel = modellrp.to(device)
+        self.mymodel = self.mymodel.eval()
         self.device = device
         self.use_cls = use_cls
         self.normalize = normalize
@@ -477,17 +509,26 @@ class LRPExplanation():
         if self.use_cls:
             org_inp =  torch.tensor([101] + input_ids + [102]).reshape(1,-1)
         else:
-            org_inp = input_ids
+            org_inp = torch.tensor(input_ids).reshape(1,-1)
         #print(org_inp)
         # Compute reference logit output
         with torch.no_grad():
             res = self.mymodel(org_inp.to(self.device), attention_mask = torch.ones_like(org_inp).to(self.device))["logits"]
         res_cls = res[:,1]-res[:,0]
-
-        input_embeddings = self.mymodel.bert.embeddings.word_embeddings(org_inp.to(self.device)).detach().clone()
+        
+        if hasattr(self.mymodel, "bert"):
+            input_embeddings = self.mymodel.bert.embeddings.word_embeddings(org_inp.to(self.device)).detach().clone()
+        elif hasattr(self.mymodel, "distilbert"):
+            input_embeddings = self.mymodel.distilbert.embeddings.word_embeddings(org_inp.to(self.device)).detach().clone()
+        elif hasattr(self.mymodel, "transformer"):
+            input_embeddings = self.mymodel.transformer.wte(org_inp.to(self.device)).detach().clone()
+        else:
+            raise ValueError("Unknown model type.")
         input_embeddings.requires_grad = True
         
         res_logits = self.mymodel(inputs_embeds=input_embeddings)["logits"] # [B, 2] array with class logits
+        print(res_logits[:,1]-res_logits[:,0], res_cls)
+
         if self.mode =="logit":
             cls_score = res_logits[:,1]-res_logits[:,0]
         else:
@@ -495,10 +536,10 @@ class LRPExplanation():
         
         cls_score.backward(cls_score)
         relevance = input_embeddings.grad.float().sum(-1).cpu()
-
+        #print("Obtained relevance scores: ", relevance)
+        #exit(0)
         if self.mode =="classlogit" and res_cls.item() < 0:
             relevance = -relevance
-        #print("R", relevance.shape, cls_score.shape)
         relevance = relevance[0]
         if self.normalize:
             relevance = relevance.cpu()*(torch.sum(res_cls.cpu())/torch.sum(relevance))
@@ -510,7 +551,7 @@ class LRPExplanation():
 
 
 class InputGradEstim():
-    def __init__(self, model: Union[Bert, DistilBert, GPT2, DistilGPT2], ds: datasets.dataset_dict.DatasetDict, tokenizer: AutoTokenizer, max_seq_len: int=512,
+    def __init__(self, model: Union[Bert, DistilBert, GPT2], ds: datasets.dataset_dict.DatasetDict, tokenizer: AutoTokenizer, max_seq_len: int=512,
             agg_norm=True, use_ig=False, ig_steps=20, times_input=False, device="cuda") -> None:
         """ Compute input gradient attributions.
             use_ig: Use IG attribution instead of normal gradients, implementation inspired by 
@@ -588,7 +629,7 @@ class InputGradEstim():
         gradient_non_normalized, decoded_tokens = self.delete_special_tokens(gradient_non_normalized.cpu(), decoded_tokens)
         
         # delete last token if GPT model because attention is aggregated there
-        if isinstance(self.model, GPT2) or isinstance(self.model, DistilGPT2):
+        if isinstance(self.model, GPT2) or isinstance(self.model, GPT2):
             gradient_non_normalized = gradient_non_normalized[:, :-1]
             decoded_tokens = decoded_tokens[:-1]
 
@@ -633,16 +674,12 @@ class InputGradEstim():
         sorted_importance = {k: v for k, v in sorted_importance}
         return sorted_importance
 
-def get_groundtruth_importance(gt_str, bow, bow_grad):
+def get_groundtruth_importance(gt_str, bow):
     if gt_str == "nb":
-        return NaiveBayesEstim(bow)
-    elif gt_str == "cntlr":
-        return NormCountsLogRegEstim(bow)  
+        return NaiveBayesEstim(bow) 
     elif gt_str == "lr":
         return LogRegEstim(bow)
     elif gt_str == "svm":
         return SVMEstim(bow)
-    elif gt_str == "inputgrad":
-        return InputGradEstim(bow_grad)
     else:
         raise NotImplementedError(f"Non-supported ground truth {gt_str}.")

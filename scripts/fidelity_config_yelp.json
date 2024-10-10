@@ -1,10 +1,12 @@
 {
     "explanations": [
-        ["SLALOM", {"sgd_lr": 5e-3, "sgd_epochs": 60, "modes": ["value", "lin", "importance", "removal"], "n_samples": 5000, "seq_len": 2}],
-        ["SHAP", {"method": "kernel", "num_samples": 5000}], 
-        ["LIME", {"n_samples": 5000}],
-        ["InputGrad", {"use_ig": false, "times_input": false}],
-        ["InputGrad", {"use_ig": true, "times_input": false, "ig_steps": 30}]
+        ["SLALOM", {"sgd_lr": 5e-3, "sgd_epochs": 60, "modes": ["value", "importance", "lin"], "n_samples": 5000, "seq_len": 2, "active": true}],
+        ["SLALOM",  {"sgd_lr": 3e-2, "sgd_epochs": 100, "modes": ["value", "importance", "lin"], "n_samples": 5000, "sampling_strategy": "deletion"}],
+        ["SHAP", {"method": "kernel", "num_samples": 5000, "active": true}], 
+        ["LIME", {"n_samples": 5000, "active": true}],
+        ["InputGrad", {"use_ig": false, "times_input": false, "active": true}],
+        ["InputGrad", {"use_ig": true, "times_input": false, "ig_steps": 30, "active": true}],
+        ["Zero", {}]
     ],
     "metrics": ["insertion", "deletion", "removal"],
     "model": ["Transformer", ["yelp_distilbert_6_12", "yelp_distilgpt2_6_12", "yelp_bert_6_12"]],

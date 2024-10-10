@@ -26,9 +26,10 @@ def predict_removal_from_expl(removal_mask: torch.tensor, input_expl: np.ndarray
 
 
 def multi_removal_curve(model, input_tokens, input_expl, input_classes=None, use_cls=True, 
-        device="cuda:3", batch_size = 32, logits=True, max_deletion=5, deletion_samples=20, slalom_idx=0):
-    """ Compute the multiple deletion curve metric. If input_expl is a single score, it is treated as a linear model, two scores are treated as a SLALOM model.
-        input_expl: list of (N, X) or (N, 2) tensor with explanations. SLALOM is used to compute deletion when dimensionality = 2.
+        device="cuda:3", batch_size = 32, logits=True, max_deletion=5, deletion_samples=20, slalom_idx=[0]):
+    """ Compute the multiple deletion curve metric. If input_expl is a single score, it is treated as a linear model.
+        If the index is in the list slalom_idx, [index, index+1] scores are treated together as a SLALOM model.
+        input_expl: list of (N, numtok) or (N, numtok) tensor with explanations. SLALOM is used to compute deletion the first index is in slalom_idx
         input_tokens: list of tokens
     """
     model.eval()
@@ -50,7 +51,7 @@ def multi_removal_curve(model, input_tokens, input_expl, input_classes=None, use
             org_target = org_target[:,input_classes[sid]]
         org_target = org_target.cpu().numpy()
         mse_list = []
-        #print("org_target", org_target)
+        print("org_target", org_target)
         for num_deleted in range(1, max_deletion+1):
             sample_mask = torch.zeros(deletion_samples, len(input_tokens[sid]), dtype=torch.long)
             for k in range(deletion_samples):
@@ -87,12 +88,12 @@ def multi_removal_curve(model, input_tokens, input_expl, input_classes=None, use
             #print(probas_target)
             explanations = input_expl[sid]
             num_explanations = explanations.shape[0]
-            print(num_explanations)
+            #print(num_explanations)
             explmse_list = []
             for i in range(num_explanations):
-                if i == slalom_idx:
+                if i in slalom_idx:
                     use_expl = explanations[i:i+2, :]
-                elif i != slalom_idx+1:
+                elif i-1 not in slalom_idx: # not already processed with previous slalom.
                     use_expl = explanations[i:i+1, :]
                 else:
                     continue
@@ -210,3 +211,45 @@ def spearman_removal_corr_metric(model, input_tokens, input_expl, input_classes=
     return np.stack(corr_list), np.stack(mse_list)
 
 
+def correlation_with_gt(input_tokens, input_expl, tokenizer, dataset, model_name, gt_use="nb", slalom_idx=[]):
+    """ Compute correlation with ground truth metrics. """
+    gt_tokens = torch.load(f"ground_truth/gt_{model_name}_{dataset}.pt")
+    importances = gt_tokens[gt_use]
+    special_tokens = tokenizer.all_special_tokens
+    all_res_lists = []
+    for sid in range(len(input_tokens)):
+        decoded_tokens = []
+        for input in input_tokens[sid]:
+            decoded_tokens.append(tokenizer.convert_ids_to_tokens([input])[0])
+        
+        tokens_use = [] # List of tokens used for computing corrlations
+        use_idx = [] # Their idx
+        use_imps_mult = []
+        for i, token_str in enumerate(decoded_tokens):
+            if token_str in importances:
+                if token_str in tokens_use:
+                    continue
+                use_idx.append(i)
+                tokens_use.append(token_str)
+                #use_imps_bin.append(importances_nb_bin[token_str])
+                use_imps_mult.append(importances[token_str])
+            else:
+                print("No ground truth found for token: ", token_str)
+                
+        use_imps_mult = np.array(use_imps_mult)
+        use_idx = np.array(use_idx)
+        num_explanations = input_expl[sid].shape[0]
+        explmse_list = []
+        print(use_imps_mult.shape, input_expl[sid][0, use_idx].shape)
+        for i in range(num_explanations):
+            if i-1 in slalom_idx: ## Usigned
+                explmse_list.append(spearmanr(np.abs(use_imps_mult), input_expl[sid][i, use_idx])[0])
+            else:
+                explmse_list.append(spearmanr(use_imps_mult, input_expl[sid][i, use_idx])[0])
+        all_res_lists.append(explmse_list)
+    return all_res_lists
+        
+
+                    
+
+        

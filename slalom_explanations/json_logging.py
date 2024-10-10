@@ -34,10 +34,10 @@ class JSONLogger():
         res_new = {}
         lvl_curr = res_new
         for lvl_name in self.hierarchy:
-            lvl_curr[kwargs[lvl_name]] = {}
+            lvl_curr[str(kwargs[lvl_name])] = {}
             lvl_prev = lvl_curr
-            lvl_curr = lvl_curr[kwargs[lvl_name]]
+            lvl_curr = lvl_curr[str(kwargs[lvl_name])]
 
-        lvl_prev[kwargs[self.hierarchy[-1]]] = new_results
+        lvl_prev[str(kwargs[self.hierarchy[-1]])] = new_results
         smart_update_json(res_new, self.filename)
 

@@ -78,7 +78,6 @@ class Correlation(object):
     #@profile
     def delete_special_tokens(self, att_mat: np.ndarray) -> Tuple[np.ndarray, List, Dict]:
         """Deletes special tokens from the given 2D attention matrix (not 3D!!)
-
         Returns:
         att_mat_wo_special_tokens: Attention matrix without special tokens
         decoded_tokens_wo_special_tokens: List of decoded tokens without special tokens
