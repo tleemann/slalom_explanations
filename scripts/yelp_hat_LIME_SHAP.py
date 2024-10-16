@@ -91,6 +91,7 @@ if __name__ == "__main__":
     config = parseargs()
     metrics_config = json.load(open(config.config_file))
     device=config.device
+    print(device)
     dataset="yelp"
     ##
     if "model" not in metrics_config:
@@ -126,7 +127,7 @@ if __name__ == "__main__":
                     del explainer_args["active"]
             print(explainer_key)
             xai_methods.append(instantiate_explanation(explainer_key, explainer_args, model_to_explain, tokenizer, dataset=dataset,\
-            device=device, use_cls=use_cls, modellrp=mylrpmodel))
+            device=device, use_cls=use_cls, modellrp=mylrpmodel, pad_token = '<|endoftext|>'if "gpt2" in run else None))
 
         #toks, rankings, expl_values = compute_explanations_rankings(imdb_test_use, xai_methods)
 
@@ -186,6 +187,7 @@ if __name__ == "__main__":
                             expls = expls.reshape(1, -1)
                         expl_scores.append(expls)
                     expl_scores = np.concatenate(expl_scores, axis=0)
+                    print("Shape of expl_scores: ", expl_scores.shape)
                     res_list = []
                     for i in range(len(expl_scores)):
                         if i-1 in metrics_config["slalom_idx"]: ## Unsigned-> Unsigned
@@ -193,6 +195,7 @@ if __name__ == "__main__":
                         else: ## Signed-> unsigned
                             res_list.append(roc_auc_score(use_imps, np.abs(expl_scores[i, use_idx])))
                     samples_list.append(res_list)
+                    print(len(res_list))
                 except Exception as e:
                     print(e)
                     print(traceback.format_exc())
@@ -204,5 +207,5 @@ if __name__ == "__main__":
         print(corr_dict)
         import json
         import os
-        res_filename = f"metrics/corr_yelp_results_{run}.json"
+        res_filename = f"metrics/corr_100_yelp_results_{run}.json"
         json.dump(corr_dict, open(res_filename, "w"))

@@ -101,9 +101,10 @@ class Trainer():
         # tokenize dataset and create dataloader
         if tokenization_required:
             self.ds_tokenized = ds.map(self.preprocess_function_maxlen, batched=True)
+            self.ds_tokenized.set_format(type="torch")
         else:
             self.ds_tokenized = ds
-        self.ds_tokenized.set_format(type="torch")
+       
         if isinstance(self.model, GPT2ForSequenceClassification):
             print('GPT model detected, resizing token embeddings')
             #self.model.resize_token_embeddings(len(self.tokenizer))

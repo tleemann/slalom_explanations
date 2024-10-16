@@ -1,0 +1,18 @@
+{
+    "explanations": [
+        ["SLALOM",  {"modes": ["value", "importance", "lin"], "n_samples": 5000, "sampling_strategy": "deletion", "fit_sgd": false,  "active": false}],
+        ["SLALOM", {"sgd_lr": 1e-2, "sgd_epochs": 20, "modes": ["value", "importance", "lin"], "n_samples": 5000, "seq_len": 2, "active": true}],
+        ["SHAP", {"method": "kernel", "num_samples": 5000, "active": false}], 
+        ["LIME", {"n_samples": 5000, "active": false}],
+        ["InputGrad", {"use_ig": false, "times_input": false, "active": false}],
+        ["InputGrad", {"use_ig": true, "times_input": false, "ig_steps": 30, "active": false}],
+        ["LRP",  {"normalize": false, "mode": "classlogit", "active": false}],
+        ["Zero", {"active": false}]
+    ],
+    "metrics": ["insertion", "deletion", "multiremoval", "groundtruth-nb"],
+    "model": [],
+    "explanation_file": "test_explanations_faith_gpt2_100.pt",
+    "metrics_file": "metrics/100_",
+    "slalom_idx": [0, 3],
+    "update": true
+}

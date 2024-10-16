@@ -30,7 +30,7 @@ def arg_parse():
     return args
 
 
-def instantiate_explanation(key, args, model, tokenizer, dataset, device="cuda", use_cls=True, modellrp=None):
+def instantiate_explanation(key, args, model, tokenizer, dataset, device="cuda", use_cls=True, modellrp=None, pad_token=None):
     args["device"] = device
     args["model"] = model
     if key == "LIME":
@@ -42,6 +42,8 @@ def instantiate_explanation(key, args, model, tokenizer, dataset, device="cuda",
         return InputGradEstim(**args)
     elif key== "SHAP":
         args["tokenizer"] = tokenizer
+        if pad_token is not None:
+            args["impute_token"] = pad_token
         return ShapleyValues(**args)
     elif key== "LRP":
         del args["model"]
@@ -66,37 +68,46 @@ def compute_explanations_rankings(input_dataset, explainer_list, maxlen = 510, u
     token_list = []
     ranking_list = []
     expl_score_list = []
+    target_labels = []
     for record in input_dataset:
-        if use_cls:
-            input_tokens = tokenizer.encode(record["text"])[1:-1]
-        else:
-            input_tokens = tokenizer.encode(record["text"])
-        input_tokens= input_tokens[:maxlen]
-        token_list.append(input_tokens)
-        expl_ranks = []
-        expl_scores = []
-        for my_expl in explainer_list:
-            print(len(input_tokens))
-            expls = my_expl.get_signed_importance_for_tokens(input_tokens)
-            if len(expls.shape) == 1:
-                expls = expls.reshape(1, -1)
-            #if expls.shape[1] == 1:
-            #if not isinstance(my_expl, LRPExplanation) or my_expl.mode != "classlogit": ## This explanation is already class specific.
-            sign = 2*record["label"]-1
-            ranks = np.argsort(np.argsort(-sign*expls, axis=-1), axis=-1)
-            #else:
-            #    print("Class logit.")
-            #    ranks = np.argsort(np.argsort(-expls, axis=-1), axis=-1)
-            print(ranks.shape)
-            expl_ranks.append(ranks)
-            #else:
-            #    expl_ranks.append([])
-            expl_scores.append(expls)
-        expl_ranks = np.concatenate(expl_ranks, axis=0)
-        ranking_list.append(expl_ranks)
-        expl_scores = np.concatenate(expl_scores, axis=0)
-        expl_score_list.append(expl_scores)
-    return token_list, ranking_list, expl_score_list
+        try:
+            if use_cls:
+                input_tokens = tokenizer.encode(record["text"])[1:-1]
+            else:
+                input_tokens = tokenizer.encode(record["text"])
+            input_tokens= input_tokens[:maxlen]
+            
+            expl_ranks = []
+            expl_scores = []
+        
+            for my_expl in explainer_list:
+                print(len(input_tokens))
+                expls = my_expl.get_signed_importance_for_tokens(input_tokens)
+                if len(expls.shape) == 1:
+                    expls = expls.reshape(1, -1)
+                #if expls.shape[1] == 1:
+                #if not isinstance(my_expl, LRPExplanation) or my_expl.mode != "classlogit": ## This explanation is already class specific.
+                sign = 2*record["label"]-1
+                ranks = np.argsort(np.argsort(-sign*expls, axis=-1), axis=-1)
+                #else:
+                #    print("Class logit.")
+                #    ranks = np.argsort(np.argsort(-expls, axis=-1), axis=-1)
+                print(ranks.shape)
+                expl_ranks.append(ranks)
+                #else:
+                #    expl_ranks.append([])
+                expl_scores.append(expls)
+            
+            token_list.append(input_tokens)
+            expl_ranks = np.concatenate(expl_ranks, axis=0)
+            ranking_list.append(expl_ranks)
+            expl_scores = np.concatenate(expl_scores, axis=0)
+            expl_score_list.append(expl_scores)
+            target_labels.append(record["label"])
+        except Exception as e:
+            print(e)
+
+    return token_list, ranking_list, expl_score_list, target_labels
 
 def load_transformer_model(run, device):
     prefix = "/mnt/ssd3/tobias/"
@@ -180,7 +191,7 @@ if __name__ == "__main__":
         dataset = yelp
     else:
         raise ValueError(f"Unknown dataset {config.dataset}.")
-    target_labels = dataset["test"]["label"]
+
 
 
     model_to_explain, tokenizer = None, None
@@ -191,6 +202,8 @@ if __name__ == "__main__":
         if modeltype == "Transformer":
             model_obj, mylrpmodel, tokenizer, use_cls = load_transformer_model(run, device)
             model_to_explain = model_obj.model
+            parts = run.split("_")
+            model_name = parts[1]
         elif modeltype == "TFIDFModel":
             tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased', use_fast=True, padding=512)
             model_to_explain = TFIDFModel(dataset, tokenizer, metrics_config["model"][1])
@@ -225,7 +238,26 @@ if __name__ == "__main__":
     
             ## get explanation objects:
             xai_methods = []
+            xai_std_update_idx = []
+            xai_multiremoval_update_idx = []
+            xai_sz = []
+            xai_multiremoval_sz = []
+            curr_std_idx = 0
+            curr_multiremoval_idx = 0
             for explainer_key, explainer_args in metrics_config["explanations"]:
+                is_multislalom = curr_std_idx in metrics_config["slalom_idx"]
+                if not ("active" in explainer_args and explainer_args["active"] == False):
+                    xai_std_update_idx.append(curr_std_idx)
+                    xai_multiremoval_update_idx.append(curr_multiremoval_idx)
+                    xai_sz.append(1 if explainer_key != "SLALOM" else len(explainer_args["modes"]))
+                    xai_multiremoval_sz.append(1 if explainer_key != "SLALOM" else len(explainer_args["modes"])-int(is_multislalom))
+                if explainer_key == "SLALOM":
+                    curr_std_idx += len(explainer_args["modes"])
+                    curr_multiremoval_idx += (len(explainer_args["modes"]) - int(is_multislalom))
+                else:
+                    curr_std_idx += 1
+                    curr_multiremoval_idx += 1
+
                 if "active" in explainer_args:
                     if not explainer_args["active"]:
                         continue
@@ -233,16 +265,16 @@ if __name__ == "__main__":
                         del explainer_args["active"]
                 print(explainer_key)
                 xai_methods.append(instantiate_explanation(explainer_key, explainer_args, model_to_explain, tokenizer, dataset=dataset,\
-                device=device, use_cls=use_cls, modellrp=mylrpmodel))
-
-            toks, rankings, expl_values = compute_explanations_rankings(imdb_test_use, xai_methods)
-            
-
-            torch.save((toks, rankings, expl_values), metrics_config['explanation_file'])
+                device=device, use_cls=use_cls, modellrp=mylrpmodel, pad_token = '<|endoftext|>'if "gpt2" in run else None ))
+            print(xai_std_update_idx, xai_multiremoval_update_idx)
+            print(xai_sz, xai_multiremoval_sz)
+            toks, rankings, expl_values, target_labels = compute_explanations_rankings(imdb_test_use, xai_methods)
+            torch.save((toks, rankings, expl_values, target_labels), metrics_config['explanation_file'])
         else:
-            toks, rankings, expl_values = torch.load(metrics_config['explanation_file'])
+            toks, rankings, expl_values, target_labels = torch.load(metrics_config['explanation_file'])
 
         if not config.skip_metrics:
+            target_labels = torch.tensor(target_labels)
             slalom_idx = []
             if "slalom_idx" in metrics_config:
                 slalom_idx = metrics_config["slalom_idx"]
@@ -267,4 +299,19 @@ if __name__ == "__main__":
             if "groundtruth-nb" in metrics_config["metrics"]:
                 res = correlation_with_gt(toks, expl_values, tokenizer, dataset=config.dataset, model_name=model_name, slalom_idx=slalom_idx)
                 metrics_res["groundtruth-nb"] = res
-            torch.save(metrics_res, metrics_config['metrics_file'] + f"{modeltype}_{run}.pt")
+            if metrics_config["update"]:
+                metric_res_old = torch.load(metrics_config['metrics_file'] + f"{modeltype}_{run}.pt")
+                cnt = 0
+                for k in range(len(xai_sz)):
+                    for sample_idx in range(len(metrics_res[list(metrics_res.keys())[0]])):
+                        for metric in metrics_res.keys():
+                            if metric in ["insertion", "deletion", "removal", "groundtruth-nb"]:
+                                print(metric)
+                                metric_res_old[metric][sample_idx][xai_std_update_idx[k]:xai_std_update_idx[k]+xai_sz[k]] = metrics_res[metric][sample_idx][cnt:cnt+xai_sz[k]]
+                            elif metric == "multiremoval_mse": # multiremoval
+                                print(metric)
+                                for dels in range(10):
+                                    metric_res_old[metric][sample_idx][dels][xai_multiremoval_update_idx[k]:xai_multiremoval_update_idx[k]+xai_multiremoval_sz[k]]= metrics_res[metric][sample_idx][dels][cnt:cnt+xai_multiremoval_sz[k]]
+                torch.save(metric_res_old, metrics_config['metrics_file'] + f"{modeltype}_{run}.pt")
+            else:
+                torch.save(metrics_res, metrics_config['metrics_file'] + f"{modeltype}_{run}.pt")

@@ -199,7 +199,8 @@ def fit_iter_rand(example_slalom_model, real_model, vocab, input_seq, offline_ds
         ub = np.ones(V_raw.shape[1])*np.inf
         x0=np.ones(V_raw.shape[1])*1
         x0[-1] = len(example_slalom_model.my_importance)-1
-        res = least_squares(least_squres_fun, x0=x0, bounds=(lb, ub), max_nfev=1000)
+        res = least_squares(least_squres_fun, x0=x0, bounds=(lb, ub), max_nfev=100)
+        print(res)
         example_slalom_model.my_importance.data[1:] = torch.tensor(np.log(res.x)[:-1], dtype=float).to(device)
 
         # v step
@@ -242,10 +243,11 @@ def fit_sgd_rand(example_slalom_model, real_model, vocab: torch.tensor, input_se
 
     my_optim = Adam(example_slalom_model.parameters(), lr = lr)
     iters = 0
+    sampling_sz = 16
     if offline_ds_size:
         inps_list, mask_list, output_list = [], [], []
-        for i in range(0, offline_ds_size, batch_size//16):
-            inps, masks, _, outputs = sample_dataset(batch_size//16, real_model, vocab, input_seq, seq_len=seq_len, use_cls=use_cls, fixed_len=fixed_len,
+        for i in range(0, offline_ds_size, sampling_sz):
+            inps, masks, _, outputs = sample_dataset(sampling_sz, real_model, vocab, input_seq, seq_len=seq_len, use_cls=use_cls, fixed_len=fixed_len,
                     device=example_slalom_model.device, mode=mode, pad_token_id=pad_token_id)
             inps_list.append(inps)
             mask_list.append(masks)

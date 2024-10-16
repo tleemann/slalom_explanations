@@ -87,6 +87,28 @@ def get_activation(activation_string):
     else:
         raise ValueError("Other activation function currently not supported.")
 
+def scaled_dot_product_attention(query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False, scale=None) -> torch.Tensor:
+    """ from https://pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html """
+    L, S = query.size(-2), key.size(-2)
+    scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
+    attn_bias = torch.zeros(L, S, dtype=query.dtype, device=query.device)
+    if is_causal:
+        assert attn_mask is None
+        temp_mask = torch.ones(L, S, dtype=torch.bool, device=query.device).tril(diagonal=0)
+        attn_bias.masked_fill_(temp_mask.logical_not(), float("-inf"))
+        attn_bias.to(query.dtype)
+
+    if attn_mask is not None:
+        if attn_mask.dtype == torch.bool:
+            attn_bias.masked_fill_(attn_mask.logical_not(), float("-inf"))
+        else:
+            attn_bias = lf.add2(attn_bias, attn_mask)
+    attn_weight = lf.mul2(lf.matmul(query, key.transpose(-2, -1)), scale_factor)
+    attn_weight = lf.add2(attn_weight, attn_bias)
+    attn_weight = lf.softmax(attn_weight, dim=-1)
+    attn_weight = torch.dropout(attn_weight, dropout_p, train=True)
+    return lf.matmul(attn_weight, value)
+
 
 # UTILS AND BUILDING BLOCKS OF THE ARCHITECTURE #
 def create_sinusoidal_embeddings(n_pos: int, dim: int, out: torch.Tensor):
@@ -419,8 +441,7 @@ class DistilBertSdpaAttention(MultiHeadSelfAttention):
             q = q.contiguous()
             k = k.contiguous()
             v = v.contiguous()
-
-        attn_output = torch.nn.functional.scaled_dot_product_attention(
+        attn_output = scaled_dot_product_attention(
             q,
             k,
             v,
