@@ -16,7 +16,7 @@ from scripts.faithfulness_eval import load_transformer_model
 
 num_evals = int(sys.argv[1])
 num_samples = int(sys.argv[2])
-use_device = "cuda:1"
+use_device = "cuda:3"
 
 imdb = load_dataset('imdb').with_format('torch', device="cpu") # format to pytorch tensors, but leave data on cpu
 imdb["train"] = imdb["train"].shuffle(seed=42).select(range(5000))
@@ -39,7 +39,7 @@ if len(sys.argv) > 3 and sys.argv[3] == "BLOOM":
     myigradestim = InputGradEstim(model, imdb, tokenizer, agg_norm=False, use_ig=True, ig_steps=8, times_input=False, device=use_device)
     mygrad = InputGradEstim(model, imdb, tokenizer, agg_norm=False, use_ig=False, ig_steps=8, times_input=False, device=use_device)
 else:
-    run = "imdb_distilbert_6_r7"
+    run = "imdb_distilbert_2_r7"
     model_obj, mylrpmodel, tokenizer, use_cls = load_transformer_model(run, use_device)
     ## initiate explainers
     my_shap = ShapleyValues(model_obj.model, tokenizer, method="kernel", device=use_device, num_samples=num_samples)
@@ -48,7 +48,7 @@ else:
     mygrad = InputGradEstim(model_obj.model, imdb, tokenizer, agg_norm=False, use_ig=False, ig_steps=20, times_input=False, device=use_device)
     sle2 = SLALOMLocalExplanantions(model_obj.model, device=use_device, n_samples = num_samples, sgd_lr=8e-3, sgd_epochs=20, modes=["lin"], use_cls=use_cls, seq_len=2)
     sle_faith = SLALOMLocalExplanantions(model_obj.model, device=use_device, n_samples = num_samples, modes=["lin"], sampling_strategy="deletion", use_cls=use_cls, fit_sgd=False)
-    lrp = LRPExplanation(mylrpmodel, normalize = False, mode = "classlogit", use_cls=use_cls)
+    lrp = LRPExplanation(mylrpmodel, normalize = False, mode = "classlogit", use_cls=use_cls, device=use_device)
 
 #target_labels = imdb["test"]["label"]
 explainers = {"SHAP": my_shap, "LIME": my_lime, "IG": myigradestim, "Grad": mygrad, "SLALOM-eff": sle2, "SLALOM-faith": sle_faith, "LRP": lrp}

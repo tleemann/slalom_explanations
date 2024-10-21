@@ -498,6 +498,7 @@ class LRPExplanation():
     """ LRP for transformers. """
     def __init__(self, modellrp, device="cuda", use_cls=True, normalize=True, mode="logit"):
         #transform the model 
+        print(device)
         self.mymodel = modellrp.to(device)
         self.mymodel = self.mymodel.eval()
         self.device = device

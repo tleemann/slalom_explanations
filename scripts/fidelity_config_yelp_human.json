@@ -1,0 +1,12 @@
+{
+    "explanations": [
+        ["SLALOM",  {"modes": ["value", "importance", "lin"], "n_samples": 5000, "sampling_strategy": "deletion", "fit_sgd": false,  "active": true}],
+        ["SLALOM", {"sgd_lr": 1e-2, "sgd_epochs": 20, "modes": ["value", "importance", "lin"], "n_samples": 5000, "seq_len": 2, "active": false}],
+        ["SHAP", {"method": "kernel", "num_samples": 5000, "active": false}], 
+        ["LIME", {"n_samples": 5000, "active": false}],
+        ["LRP",  {"normalize": false, "mode": "classlogit", "active": false}]
+    ],
+    "model": [],
+    "slalom_idx": [0, 3],
+    "resultsfile": "corr_fidel_yelp_results"
+}

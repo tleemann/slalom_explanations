@@ -222,15 +222,15 @@ if __name__ == "__main__":
         else:
             raise ValueError("Unknown model.")
         print("use cls: ", use_cls)
-        if config.filter_length > 0:
-            lengths = []
-            for i, record in enumerate(dataset["test"]):
-                input_tokens = tokenizer.encode(record["text"])
-                lengths.append(len(input_tokens))
-            lengths = np.array(lengths)
-            imdb_test_use = dataset["test"].select(np.nonzero(lengths < 100)[0][:config.n_samples])
+        lengths = []
+        for i, record in enumerate(dataset["test"]):
+            input_tokens = tokenizer.encode(record["text"])
+            lengths.append(len(input_tokens))
+        lengths = np.array(lengths)
+        if config.filter_length > 0:            
+            imdb_test_use = dataset["test"].select(np.nonzero((lengths > 10) & (lengths < 100))[0][:config.n_samples])
         else:
-            imdb_test_use = dataset["test"].select(range(config.n_samples))
+            imdb_test_use = dataset["test"].select(np.nonzero(lengths > 10)[0][:config.n_samples])
         print(f"Using {len(imdb_test_use)} samples.")
 
         if not config.skip_explanations:
@@ -299,7 +299,7 @@ if __name__ == "__main__":
             if "groundtruth-nb" in metrics_config["metrics"]:
                 res = correlation_with_gt(toks, expl_values, tokenizer, dataset=config.dataset, model_name=model_name, slalom_idx=slalom_idx)
                 metrics_res["groundtruth-nb"] = res
-            if metrics_config["update"]:
+            if "update" in metrics_config and metrics_config["update"] == True:
                 metric_res_old = torch.load(metrics_config['metrics_file'] + f"{modeltype}_{run}.pt")
                 cnt = 0
                 for k in range(len(xai_sz)):

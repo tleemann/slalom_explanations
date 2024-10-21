@@ -207,5 +207,5 @@ if __name__ == "__main__":
         print(corr_dict)
         import json
         import os
-        res_filename = f"metrics/corr_100_yelp_results_{run}.json"
+        res_filename = f"metrics/{metrics_config['resultsfile']}_{run}.json"
         json.dump(corr_dict, open(res_filename, "w"))
