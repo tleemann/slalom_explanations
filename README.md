@@ -17,7 +17,7 @@ conda install -c conda-forge shap
 ## Important files
 
 The important code files for this project are located in the folder ```slalom_explanations```.
-The experiments in Sections 6.1. / 6.2. are organized as Notebooks in the folder ```notebooks```. 
+The experiments in Sections 6.1. / 6.2. are organized as Jupyter Notebooks in the folder ```notebooks```. 
 
 Follow these intructions to reproduce experiments:
 
