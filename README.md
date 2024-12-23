@@ -1,4 +1,6 @@
-# Code for submission "Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers"
+# SLALOM: High-Fidelity Token-Level Explanations for Transformers
+
+Code Repository for TMLR Paper [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci.
 
 ## Setup
 First setup a new envirionment by installing the dependencies listed in the file and activate it.
@@ -39,3 +41,17 @@ the models were stored.
 
 
 Our implementation of the Local SLALOM fitting can be found in ```slalom_explanations/slalom_helpers.py``` and the implementations of other methods are in ```slalom_explanations/attribution_methods.py```
+
+**Reference**
+Please cite our paper if you find the work or the code provided here helpful, e.g., using the following BibTeX entry:
+```
+@article{
+leemann2024attention,
+title={Attention Mechanisms Don{\textquoteright}t Learn Additive Models: Rethinking Feature Importance for Transformers},
+author={Leemann, Tobias and Fastowski, Alina and Pfeiffer, Felix and Kasneci, Gjergji},
+journal={Transactions on Machine Learning Research},
+year={2024},
+url={https://openreview.net/forum?id=yawWz4qWkF},
+note={Accepted for Publication.}
+}
+```
