@@ -9,6 +9,7 @@ from torch.nn import Parameter
 from scipy.optimize import least_squares
 from sklearn.linear_model import LinearRegression
 import numpy as np
+from tqdm import tqdm
 
 class MyLittleSLALOM(torch.nn.Module):
     def __init__(self, my_tokens, device="cpu", v_init=0.0, fix_importances=False, pad_token_id=0):
@@ -237,7 +238,6 @@ def fit_sgd_rand(example_slalom_model, real_model, vocab: torch.tensor, input_se
             IT IS RECOMMENDED TO USE THIS PARAMETER TO MAKE THE APPOXIMATION MORE EFFICIENT.
             The parameter subsize is ignored as the number of batches in one epoch will be given by offline_ds_size/batch_size
     """
-    print("Pad-Token-ID:", pad_token_id)
     real_model = real_model.to(example_slalom_model.device)
     real_model.eval()
 
@@ -257,7 +257,7 @@ def fit_sgd_rand(example_slalom_model, real_model, vocab: torch.tensor, input_se
         subsize = len(mydl)
     val_list = []
     imps_list = []
-    for ep in range(num_eps):
+    for ep in tqdm(range(num_eps)):
         losses = []
         if offline_ds_size:
             my_dl_iter = iter(mydl)
@@ -285,7 +285,7 @@ def fit_sgd_rand(example_slalom_model, real_model, vocab: torch.tensor, input_se
             my_optim.step()
             losses.append(math.sqrt(loss.item()/len(output)))
             iters += 1
-        print(sum(losses))
+        #print(sum(losses))
         if ep % 3 == 2:
             val_list.append(example_slalom_model.my_values[1:].detach().clone())
             imps_list.append(example_slalom_model.my_importance[1:].detach().clone())

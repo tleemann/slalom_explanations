@@ -28,10 +28,14 @@ Here is an overview over the most prominent ones:
     - First run the notebook to compute importances offline
     - Train models using ```scripts/train_all_models.sh```
     - then use the faithfulness script as outlined in ```scripts/test_all_models.sh```
-    - ```F_Tables.ipynb``` to collect results from log-files for naive bayes and Human-Attention ROC
-    - ```G_FidelityMetrics.ipynb```to print tables with results for Fidelity metrics (Insertion/removal, multiremoval in Figure 5)
+- ```F_Tables.ipynb``` to collect results from log-files for naive bayes and Human-Attention ROC
+- ```G_FidelityMetrics.ipynb```to print tables with results for Fidelity metrics (Insertion/removal, multiremoval in Figure 5)
 - ```E_RealWorldPlots.ipynb```: Create quantitative results for IMDB datasets in Figure 6
 - ```E_RealWorldPlotsHAT.ipynb```: Create quantitative results for YELP-HAT (Appendix, Figure 11)
+- ```CaseStudy.ipynb.ipynb```: A case study for how SLALOM can be used to identify vulnerability and spurious correlations and create adversarial examples.
+- ```SLALOM_OpenAI.ipynb```: Use SLALOM to explain an OpenAI model.
 the models were stored.
+- ```scripts/runtime_eval_script.py``` for runtime experiments.
+
 
 Our implementation of the Local SLALOM fitting can be found in ```slalom_explanations/slalom_helpers.py``` and the implementations of other methods are in ```slalom_explanations/attribution_methods.py```

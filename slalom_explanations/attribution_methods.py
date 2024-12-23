@@ -427,6 +427,7 @@ class SLALOMLocalExplanantions():
         self.fix_importances = fix_importances
         self.pad_token_id=pad_token_id
         self.fit_sgd = fit_sgd
+        self.curr_slalom_model = None
 
     def get_signed_importance_for_tokens(self, input_ids: list, vs_scores=False):
         unique_list, return_inverse = torch.tensor(input_ids).unique(return_inverse=True)
@@ -446,10 +447,12 @@ class SLALOMLocalExplanantions():
             example_model = MyLittleSLALOM(unique_list, self.device, fix_importances=self.fix_importances, pad_token_id=self.pad_token_id).to(self.device)
         if self.fit_sgd:
             v_scores, s_scores, example_model = fit_sgd_rand(example_model, self.model, unique_list, torch.tensor(input_ids), num_eps=self.sg_epochs, 
-                    seq_len=3, lr=self.sgd_lr, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id)
+                    seq_len=3, lr=self.sgd_lr, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy,
+                    pad_token_id=self.pad_token_id, batch_size=self.sgd_batch_size)
         else: # iterative
             v_scores, s_scores, example_model = fit_iter_rand(example_model, self.model, unique_list, torch.tensor(input_ids),
-                    seq_len=3, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id)
+                    seq_len=3, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id,
+                    batch_size=self.sgd_batch_size)
         ret_list = []
         for m in self.mode:
             if m == "lin":
@@ -466,6 +469,7 @@ class SLALOMLocalExplanantions():
             attribs = torch.zeros(len(input_ids), dtype=torch.float, device=self.device)
             attribs = prescore[return_inverse]
             ret_list.append(attribs.cpu().numpy())
+        self.curr_slalom_model = example_model
         return np.stack(ret_list)
 
 class LinearRegressionDeletion:
