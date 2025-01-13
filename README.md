@@ -42,16 +42,17 @@ the models were stored.
 
 Our implementation of the Local SLALOM fitting can be found in ```slalom_explanations/slalom_helpers.py``` and the implementations of other methods are in ```slalom_explanations/attribution_methods.py```
 
-**Reference**
+## Reference
+
 Please cite our paper if you find the work or the code provided here helpful, e.g., using the following BibTeX entry:
 ```
 @article{
-leemann2024attention,
+leemann2025attention,
 title={Attention Mechanisms Don{\textquoteright}t Learn Additive Models: Rethinking Feature Importance for Transformers},
-author={Leemann, Tobias and Fastowski, Alina and Pfeiffer, Felix and Kasneci, Gjergji},
+author={Tobias Leemann and Alina Fastowski and Felix Pfeiffer and Gjergji Kasneci},
 journal={Transactions on Machine Learning Research},
-year={2024},
+issn={2835-8856},
+year={2025},
 url={https://openreview.net/forum?id=yawWz4qWkF},
-note={Accepted for Publication.}
 }
 ```
