@@ -3,7 +3,11 @@
 
 # SLALOM: High-Fidelity Token-Level Explanations for Transformers
 
-SLALOM is a surrogate model explanation method that is specifically designed for the transformer architecture. Unlike LIME, it uses a surrogate model class that is specifically designed to model the non-linearies in attention-based models, resulting in high-fidelity explanations. This repository accompanies the TMLR Paper
+## What is SLALOM?
+
+<img align="right" width="300" height="280" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOM2.PNG">
+
+SLALOM is a surrogate model explanation method that is specifically designed for the transformer architecture. Unlike LIME, it uses a surrogate model class that is specifically designed to model the non-linearies in attention-based models, resulting in high-fidelity explanations. The explanation can be visualized in a 2D-plane that contains a dot for each token in an input sequence. One axis describes the token *value* (its impact on the classification on its own) and the other describes the token*importance* (its interaction weight when seen in combination with other tokens). This repository accompanies the TMLR Paper
 
 [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) 
 
