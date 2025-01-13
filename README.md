@@ -9,7 +9,7 @@
 
 SLALOM is a surrogate model explanation method that is specifically designed for the transformer architecture. Unlike LIME, it uses a surrogate model class that is specifically designed to model the non-linearies in attention-based models, resulting in high-fidelity explanations. The explanation can be visualized in a 2D-plane that contains a dot for each token in an input sequence. One axis describes the token *value* (its impact on the classification on its own) and the other describes the token*importance* (its interaction weight when seen in combination with other tokens). This repository accompanies the TMLR Paper
 
-[Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) 
+[Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/forum?id=yawWz4qWkF) 
 
 by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci. The technical details of the method are described in the paper.
 
