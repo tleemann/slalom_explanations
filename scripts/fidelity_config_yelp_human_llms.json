@@ -1,0 +1,9 @@
+{
+    "explanations": [
+        ["SLALOM", {"sgd_lr": 1e-2, "sgd_epochs": 20, "modes": ["value", "importance", "lin"], "n_samples": 1000, "seq_len": 2, "active": false}],
+        ["SLALOM", {"sgd_lr": 5e-3, "sgd_epochs": 60, "modes": ["value", "importance", "lin"], "n_samples": 5000, "seq_len": 2, "active": true}]
+    ],
+    "model": [],
+    "slalom_idx": [0, 3],
+    "resultsfile": "corr_fidel_yelp_results"
+}

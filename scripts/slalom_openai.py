@@ -12,7 +12,7 @@ API_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 API_LEGACY_ENDPOINT = "https://api.openai.com/v1/completions"
 
 
-DEFAULT_PROMPT = "You are a assessing movie reviews in an online forum. Your goal is to assess the reviews overall sentiment as 'overall negative' (label '0') or 'overall prositive' (label '1'). Your will see a review now and you will output a label. Make sure to only answer with either '0' or '1'."
+DEFAULT_PROMPT = "You are assessing movie reviews in an online forum. Your goal is to assess the reviews overall sentiment as 'overall negative' (label '0') or 'overall prositive' (label '1'). Your will see a review now and you will output a label. Make sure to only answer with either '0' or '1'."
 
 
 class OpenAImodel:

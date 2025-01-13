@@ -1,4 +1,5 @@
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import MambaForCausalLM, MambaConfig
 from slalom_explanations.transformer_models import DistilBert, GPT2, Bert
 import torch
 from datasets import load_dataset
@@ -10,6 +11,7 @@ import numpy as np
 import sys
 import traceback
 from scripts.faithfulness_eval import instantiate_explanation, load_transformer_model
+from scripts.train_mamba import MambaForSequenceClassification
 import argparse
 import json
 
@@ -24,7 +26,7 @@ def parseargs():
     parser = argparse.ArgumentParser()
     parser.add_argument('n_samples', type=int, help='how many test samples to use')
     parser.add_argument('config_file', type=str, help='metrics config file to use')
-    parser.add_argument('--device', type=str, help='which device to run on', default='cuda:1')
+    parser.add_argument('--device', type=str, help='which device to run on', default='cuda')
     parser.add_argument('--filter_length', type=int, default=-1, help="Filter length of the samples that are used")
     parser.add_argument('--run', type=str, nargs="+", help="list the model runs")
     parser.add_argument('--model_type', type=str, nargs="+", help="list the model types. Number of types should be the same as model.")
@@ -101,23 +103,37 @@ if __name__ == "__main__":
 
     for model_vs, run in metrics_config["model"]:
         if model_vs == "BLOOM":
-            device = "cuda:3"
+            device = "cuda:0"
             checkpoint = "bigscience/bloom-7b1"
             tokenizer = AutoTokenizer.from_pretrained(checkpoint)
             model = AutoModelForSequenceClassification.from_pretrained(checkpoint, device_map=device, num_labels=2, torch_dtype="auto")
 
             print("Loading model...")
-            trained_model_ckp = "/mnt/ssd2/tobias/models/bloom-7b1_trained_100000_1.pt"
+            trained_model_ckp = run #"/mnt/ssd2/tobias/models/bloom-7b1_trained_100000_1.pt"
             model.load_state_dict(torch.load(trained_model_ckp,  map_location=device))
             use_cls = False
-
-            lime_expl = LIMEExplanation(model, tokenizer, device=device, n_samples=bg_ds_size)
-            shap_expl = ShapleyValues(model, tokenizer, device=device, method="kernel", num_samples=bg_ds_size, impute_token="<pad>")
-            use_cls_off = False
+            model_to_explain = model
+            #lime_expl = LIMEExplanation(model, tokenizer, device=device, n_samples=bg_ds_size)
+            #shap_expl = ShapleyValues(model, tokenizer, device=device, method="kernel", num_samples=bg_ds_size, impute_token="<pad>")
             layers = 1
+            mylrpmodel= None
+        elif model_vs == "Mamba":
+            checkpoint = "state-spaces/mamba-2.8b-hf"
+            trained_model_ckp=run
+            tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+            #mconfig = MambaConfig.from_pretrained(checkpoint)
+            #model = MambaForCausalLM.from_pretrained(checkpoint, config=mconfig)
+            #mymamba = MambaForSequenceClassification(mconfig, model, num_classes=2) #.to("cuda")
+            #mymamba.load_state_dict(torch.load(trained_model_ckp,  map_location=device))
+            mymamba = MambaForSequenceClassification.from_pretrained(trained_model_ckp)
+            layers = 1
+            use_cls = False
+            model_to_explain = mymamba
+            mylrpmodel = None
         elif model_vs == "Transformer":
             model_obj, mylrpmodel, tokenizer, use_cls = load_transformer_model(run, device)
             model_to_explain = model_obj.model
+
         xai_methods = []
         for explainer_key, explainer_args in metrics_config["explanations"]:
             if "active" in explainer_args:
@@ -207,5 +223,5 @@ if __name__ == "__main__":
         print(corr_dict)
         import json
         import os
-        res_filename = f"metrics/{metrics_config['resultsfile']}_{run}.json"
+        res_filename = f"metrics/{metrics_config['resultsfile']}_{run.split('/')[-1]}.json"
         json.dump(corr_dict, open(res_filename, "w"))
