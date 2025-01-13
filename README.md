@@ -5,7 +5,7 @@
 
 ## What is SLALOM?
 
-<img align="right" width="300" height="280" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOM2.PNG">
+<p><img align="right" width="362" height="567" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOM2.PNG"></p>
 
 SLALOM is a surrogate model explanation method that is specifically designed for the transformer architecture. Unlike LIME, it uses a surrogate model class that is specifically designed to model the non-linearies in attention-based models, resulting in high-fidelity explanations. The explanation can be visualized in a 2D-plane that contains a dot for each token in an input sequence. One axis describes the token *value* (its impact on the classification on its own) and the other describes the token*importance* (its interaction weight when seen in combination with other tokens). This repository accompanies the TMLR Paper
 
@@ -14,6 +14,12 @@ SLALOM is a surrogate model explanation method that is specifically designed for
 by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci. The technical details of the method are described in the paper.
 
 **13 Jan 2025: Note: A refactoring of the codebase is currently in progress. We will seperate the code to reproduce experiments from the actual implementation of SLALOM explanations, to make the method more accessible.**
+
+<br>
+<br>
+<br>
+<br>
+<br>
 
 ## Installing the full repository
 
