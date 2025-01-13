@@ -3,9 +3,16 @@
 
 # SLALOM: High-Fidelity Token-Level Explanations for Transformers
 
-Code Repository for TMLR Paper [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci.
+SLALOM is a surrogate model explanation method that is specifically designed for the transformer architecture. Unlike LIME, it uses a surrogate model class that is specifically designed to model the non-linearies in attention-based models, resulting in high-fidelity explanations. This repository accompanies the TMLR Paper
+
+[Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) 
+
+by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci. The technical details of the method are described in the paper.
+
+**13 Jan 2025: Note: A refactoring of the codebase is currently in progress. We will seperate the code to reproduce experiments from the actual implementation of SLALOM explanations, to make the method more accessible.**
 
 ## Installing the full repository
+
 First setup a new environment by installing the dependencies listed in the file and activate it.
 
 ```
