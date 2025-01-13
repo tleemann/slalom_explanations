@@ -1,7 +1,12 @@
-# Code for submission "Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers"
+<p align="center"><img width="700" height="200" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOMCrop.png"></p>
 
-## Setup
-First setup a new envirionment by installing the dependencies listed in the file and activate it.
+
+# SLALOM: High-Fidelity Token-Level Explanations for Transformers
+
+Code Repository for TMLR Paper [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci.
+
+## Installing the full repository
+First setup a new environment by installing the dependencies listed in the file and activate it.
 
 ```
 conda env create -f code/environment.yml
@@ -15,7 +20,7 @@ conda install -c conda-forge shap
 ## Important files
 
 The important code files for this project are located in the folder ```slalom_explanations```.
-The experiments in Sections 6.1. / 6.2. are organized as Notebooks in the folder ```notebooks```. 
+The experiments in Sections 6.1. / 6.2. are organized as Jupyter Notebooks in the folder ```notebooks```. 
 
 Follow these intructions to reproduce experiments:
 
@@ -39,3 +44,18 @@ the models were stored.
 
 
 Our implementation of the Local SLALOM fitting can be found in ```slalom_explanations/slalom_helpers.py``` and the implementations of other methods are in ```slalom_explanations/attribution_methods.py```
+
+## Reference
+
+Please cite our paper if you find the work or the code provided here helpful, e.g., using the following BibTeX entry:
+```
+@article{
+leemann2025attention,
+title={Attention Mechanisms Don{\textquoteright}t Learn Additive Models: Rethinking Feature Importance for Transformers},
+author={Tobias Leemann and Alina Fastowski and Felix Pfeiffer and Gjergji Kasneci},
+journal={Transactions on Machine Learning Research},
+issn={2835-8856},
+year={2025},
+url={https://openreview.net/forum?id=yawWz4qWkF},
+}
+```
