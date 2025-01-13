@@ -5,8 +5,8 @@
 
 Code Repository for TMLR Paper [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci.
 
-## Setup
-First setup a new envirionment by installing the dependencies listed in the file and activate it.
+## Installing the full repository
+First setup a new environment by installing the dependencies listed in the file and activate it.
 
 ```
 conda env create -f code/environment.yml
