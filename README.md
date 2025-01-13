@@ -1,3 +1,6 @@
+<p align="center"><img width="700" height="200" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOMCrop.png"></p>
+
+
 # SLALOM: High-Fidelity Token-Level Explanations for Transformers
 
 Code Repository for TMLR Paper [Attention Mechanisms Don’t Learn Additive Models: Rethinking Feature Importance For Transformers](https://openreview.net/pdf?id=yawWz4qWkF) by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci.
