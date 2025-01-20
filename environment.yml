@@ -1,4 +1,4 @@
-name: transformer
+name: slalom
 channels:
   - conda-forge
   - defaults
@@ -153,6 +153,7 @@ dependencies:
       - pycparser==2.21
       - pyparsing==3.0.9
       - pyre-extensions==0.0.29
+      - pytest==8.3.4
       - python-json-logger==2.0.7
       - pytz==2023.3
       - pywavelets==1.4.1
@@ -197,4 +198,4 @@ dependencies:
       - xformers==0.0.20
       - xxhash==3.2.0
       - yarl==1.9.2
-prefix: /home/felix/anaconda3/envs/transformer
+prefix: /home

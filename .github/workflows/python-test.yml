@@ -22,8 +22,8 @@ jobs:
       uses: conda-incubator/setup-miniconda@v3.0.4
     - name: Install dependencies
       run: |
-        conda init
         conda env create -f environment.yml
+        conda init
         conda activate slalom
         
     - name: Test with pytest
