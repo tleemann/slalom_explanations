@@ -51,6 +51,7 @@ from slalom_explanations import slalom_scatter_plot
 slalom_explainer = SLALOMLocalExplanantions(model, tokenizer, modes=["value", "imp"])
 
 # Compute SLALOM explanation
+example_text = "This was an amazing movie!"
 res_explanation = slalom_explainer.tokenize_and_explain(example_text)
 
 # Scatter plot
