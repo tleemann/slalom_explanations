@@ -28,7 +28,7 @@ by Tobias Leemann, Alina Fastowski, Felix Pfeiffer, and Gjergji Kasneci. The tec
 First setup a new environment by installing the dependencies listed in the file and activate it.
 
 ```
-conda env create -f code/environment.yml
+conda env create -f environment.yml
 conda activate slalom
 ```
 You will additionally need to install the shap package by running
