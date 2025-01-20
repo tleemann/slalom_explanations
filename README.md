@@ -27,12 +27,38 @@ First setup a new environment by installing the dependencies listed in the file 
 
 ```
 conda env create -f code/environment.yml
-conda activate transformers
+conda activate slalom
 ```
 You will additionally need to install the shap package by running
 ```
 conda install -c conda-forge shap
 ```
+
+Add the corresponding kernel to your existing JupyterLab installation by executing:
+```
+python -m ipykernel install --user --name slalom
+```
+
+## Basic Usage.
+
+SLALOM contains an easy-to-use interface. The main commands to compute SLALOM explanations for Huggingface transformer models (SequenceClassification) are as follows:
+
+```
+from slalom_explanations import SLALOMLocalExplanantions 
+from slalom_explanations import slalom_scatter_plot
+
+# Initialize explainer with an initialized SequenceClassification model and corresponding tokenizer
+slalom_explainer = SLALOMLocalExplanantions(model, tokenizer, modes=["value", "imp"])
+
+# Compute SLALOM explanation
+res_explanation = slalom_explainer.tokenize_and_explain(example_text)
+
+# Scatter plot
+slalom_scatter_plot(res_explanation, sizey=8, sizex=8)
+
+```
+
+We provide the notebook ```notebooks/0_Quickstart.ipynb```, which fully runs all the steps with a pretrained model from the Huggingface hub.
 
 ## Important files
 
