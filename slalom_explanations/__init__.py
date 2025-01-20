@@ -1,0 +1,3 @@
+from .slalom_explainer import SLALOMLocalExplanantions
+from .visualizations import slalom_scatter_plot, slalom_highlight_plot
+from .slalom_helpers import linearize_explanation

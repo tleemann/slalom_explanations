@@ -5,9 +5,11 @@ from slalom_explanations.slalom_helpers import sample_dataset
 from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM, fit_iter_rand, SLALOMModelWrapper
 
 
+
+
 class SLALOMLocalExplanantions():
-    def __init__(self, model, n_samples=200, device="cuda", modes=["lin"], sgd_batch_size=128, sgd_epochs=10, sgd_lr= 5e-3,
-            seq_len = 3, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True):
+    def __init__(self, model, tokenizer=None, n_samples=500, device="cuda", modes=["lin"], sgd_batch_size=128, sgd_epochs=60, sgd_lr= 5e-3,
+            seq_len = 2, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True):
         """
             Initialize a SLALOM explainer with a model trained transformer model.
             :param: model: The trained ML model. We support models following the transformers frameworks interface for binary classification:
@@ -16,6 +18,7 @@ class SLALOMLocalExplanantions():
                     model(input_ids: N x M tensor, attention_mask: N x M tensor) -> N x 2 tensor
                     model(input_ids: N x M tensor, attention_mask: N x M tensor) -> N tensor
                 It is essential that batch processing and the masking operation is supported by the model. Numpy return values are partially supported.
+            :param: tokenizer: A tokenizer with the huggingface interface. Optional. If no tokenizer is passed, only get_signed_importance_for_tokens can be used.
             :param: n_samples: The number of samples used to estimate SLALOM. Each sample is created by doing a forward passes with different inputs.
                 More samples result in higher explanation quality, less samples result in lower runtime.
             :param: device: device used to run the model and the SLALOM fitting. If the model passed supports the "to" function, the model is copied and queried on this device.
@@ -34,10 +37,11 @@ class SLALOMLocalExplanantions():
                 even if the pad tokens are masked by the attention mask as well. Be careful to pass the right token_id here.
             :param: fit_sgd: Fit the SLALOM model using SGD
         """
-        if hasattr(model, "to")
+        if hasattr(model, "to"):
             self.model = model.to(device)
         else:
             self.model = model
+        self.tokenizer = tokenizer
         self.n_samples = n_samples
         self.device = device
         self.mode = modes
@@ -53,7 +57,8 @@ class SLALOMLocalExplanantions():
         self.fit_sgd = fit_sgd
         self.curr_slalom_model = None
 
-        ## Test of model outputs
+    def _wrap_model_if_needed(self, input_ids):
+        """ Test of model outputs and wrap if necessary. """
         if self.use_cls:
                 org_inp =  torch.tensor([101] + input_ids + [102])
         else:
@@ -71,7 +76,7 @@ class SLALOMLocalExplanantions():
 
         if isinstance(inner_ret, torch.Tensor):
             convert_to_tensor = False
-        elif isinstance(inner_ret, np.Tensor):
+        elif isinstance(inner_ret, np.ndarray):
             convert_to_tensor = True
         else:
             raise ValueError(f"Unsupported output type {str(type(org_score))}. ")
@@ -91,7 +96,7 @@ class SLALOMLocalExplanantions():
                 raise ValueError(f"Unsupported output dimension. Expected 1, 1x1, or 1x2 outputs, got shape {inner_ret.shape}. ")
         else:
             raise ValueError(f"Unsupported number of output dimenstion. Expected 1 or 2 output dims, got shape {inner_ret.shape}. ")
-        
+
         if wrap_in_dict or convert_to_tensor or extend_output: # wrapping required
             self.model = SLALOMModelWrapper(self.model, wrap_in_dict, convert_to_tensor, extend_output)
         
@@ -101,6 +106,7 @@ class SLALOMLocalExplanantions():
         """
         if isinstance(input_ids, torch.Tensor):
             input_ids = list(input_ids.flatten())
+        self._wrap_model_if_needed(input_ids)
         unique_list, return_inverse = torch.tensor(input_ids).unique(return_inverse=True)
         if self.use_cls and self.fit_cls:
             unique_list = torch.cat((unique_list, torch.tensor([101, 102])), dim=0)
@@ -142,3 +148,30 @@ class SLALOMLocalExplanantions():
             ret_list.append(attribs.cpu().numpy())
         self.curr_slalom_model = example_model
         return np.stack(ret_list)
+
+
+    def tokenize_and_explain(self, input_text):
+        """ Tokenize and compute explanations for an input text sequence.
+            :param: input_text: the input sequence that will be tokenized.
+            :return: List of token names with the correspondings scores
+        """
+        inputs = self.tokenizer(input_text)
+        if self.use_cls:
+            real_inputs = inputs["input_ids"][1:-1]
+        else:
+            real_inputs = inputs["input_ids"]
+        explanation_output = self.get_signed_importance_for_tokens(real_inputs)
+        token_names = self.tokenizer.convert_ids_to_tokens(real_inputs)
+
+        if self.fit_cls:
+            real_output = explanation_output[:, 1:-1]
+        else:
+            real_output = explanation_output
+        out_list = []
+        for idx, t in enumerate(token_names):
+            out_list.append((t, real_output[:, idx]))
+
+        return out_list
+
+
+
