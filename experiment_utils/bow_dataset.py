@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset
 from torch.distributions import Categorical
 from torch.nn import Parameter
-from slalom_explanations.attribution_methods import BoW
+from experiment_utils.attribution_methods import BoW
 
 class BoWDataset(Dataset):
     """ A dataset that follows a BoW distribution. """

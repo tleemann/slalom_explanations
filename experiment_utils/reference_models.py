@@ -5,7 +5,7 @@ import torch.nn as nn
 from transformers import AutoTokenizer
 from sentence_transformers import SentenceTransformer
 
-from slalom_explanations.attribution_methods import BoW
+from experiment_utils.attribution_methods import BoW
 
 class LogitReturnType():
     def __init__(self, logits):
@@ -36,13 +36,14 @@ class TwoLayerTFIDF(nn.Module):
         return x
 
 class TFIDFModel(nn.Module):
-    def __init__(self, dataset, tokenizer, weights_file, hidden_dim=768, hidden_dim2 = 150):
+    def __init__(self, dataset, tokenizer, weights_file=None, hidden_dim=768, hidden_dim2=150):
         super().__init__()
         self.tokenizer = tokenizer
         self.imdbbow = BoW(dataset, self.tokenizer)
         voc_size = len(self.imdbbow.tfidf_vec.vocabulary_)
         self.tfidf = TwoLayerTFIDF(voc_size, hidden_dim, hidden_dim2)
-        self.tfidf.load_state_dict(torch.load(weights_file))
+        if weights_file is not None:
+            self.tfidf.load_state_dict(torch.load(weights_file))
         self.device = "cpu"
 
     def to(self, device):

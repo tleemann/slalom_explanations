@@ -11,6 +11,16 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 from tqdm import tqdm
 
+
+def linearize_explanation(slalom_explanation):
+    """ Compute the linear SLALOM scores from value/importance scores. 
+        :param: slalom_explanation: A list of (token, SLALOM-scores)-tuples as returned by SLALOMLocalExplanantions.tokenize_and_explain
+    """
+    ret_list = []
+    for tok_str, slalom_scores in slalom_explanation:
+        ret_list.append((tok_str, np.exp(slalom_scores[1])*slalom_scores[0]))
+    return ret_list
+
 class MyLittleSLALOM(torch.nn.Module):
     """ SLALOM model implementation as nn.Module. """
     def __init__(self, my_tokens, device="cpu", v_init=0.0, fix_importances=False, pad_token_id=0):
@@ -71,7 +81,7 @@ class SLALOMModelWrapper(torch.nn.Module):
         if attention_mask == None:
             attention_mask = torch.ones_like(input_ids)
         output = self.model(input_ids, attention_mask)
-        if self.wrap_in_dict
+        if self.wrap_in_dict:
             output = {"logits": output}
         if self.convert_to_tensor:
             output["logits"] = torch.from_numpy(output["logits"]).float()

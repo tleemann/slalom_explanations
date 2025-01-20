@@ -2,7 +2,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn import svm
 from sklearn.linear_model import LogisticRegression, LinearRegression
-from slalom_explanations.slalom_helpers import sample_dataset
+
 from transformers import AutoTokenizer, BertTokenizerFast, BertForSequenceClassification
 import datasets
 import numpy as np
@@ -15,8 +15,7 @@ import torch.nn.functional as F
 from lime.lime_text import LimeTextExplainer
 import torch.nn.functional as F
 
-from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM, fit_iter_rand
-from slalom_explanations.transformer_models import Bert, DistilBert, GPT2
+from experiment_utils.transformer_models import Bert, DistilBert, GPT2
 
 #from line_profiler import LineProfiler
 
@@ -405,74 +404,8 @@ class LIMEExplanation():
         explanation = self.explainer.explain_instance(clean_text, self.predictor, num_samples=self.n_samples, num_features=nf)
         return {k: v for (k, v) in explanation.as_list()}
 
-class SLALOMLocalExplanantions():
-    def __init__(self, model, n_samples=200, device="cuda", modes=["lin"], sgd_batch_size=128, sgd_epochs=10, sgd_lr= 5e-3,
-            seq_len = 3, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True):
-        """
-            seq_len: length of the sequences on which the SLALOM model should be estimated.
-            modes: list of which part of the SLALOM scores should be returned. {value, importance, removal, lin}
-            sampling_strategy: "short" or "deletion", defined wheter SLALOM is estimated on short sequences or on deletions.
-        """
-        self.model = model.to(device)
-        self.n_samples = n_samples
-        self.device = device
-        self.mode = modes
-        self.sg_epochs = sgd_epochs
-        self.sgd_lr = sgd_lr
-        self.sgd_batch_size = sgd_batch_size
-        self.use_cls = use_cls
-        self.fit_cls = fit_cls
-        self.seq_len = seq_len
-        self.sampling_strategy = sampling_strategy
-        self.fix_importances = fix_importances
-        self.pad_token_id=pad_token_id
-        self.fit_sgd = fit_sgd
-        self.curr_slalom_model = None
-
-    def get_signed_importance_for_tokens(self, input_ids: list, vs_scores=False):
-        unique_list, return_inverse = torch.tensor(input_ids).unique(return_inverse=True)
-        if self.use_cls and self.fit_cls:
-            unique_list = torch.cat((unique_list, torch.tensor([101, 102])), dim=0)
-       
-        if self.sampling_strategy =="deletion":
-            if self.use_cls:
-                org_inp =  torch.tensor([101] + input_ids + [102])
-            else:
-                org_inp =  torch.tensor(input_ids)
-            org_inp = org_inp.reshape(1,-1)
-            org_score = self.model(org_inp.to(self.device), attention_mask = torch.ones_like(org_inp).to(self.device))["logits"].detach().cpu()
-            org_target = org_score[:,1]-org_score[:,0]
-            example_model = MyLittleSLALOM(unique_list, self.device, v_init=org_target, fix_importances=self.fix_importances, pad_token_id=self.pad_token_id).to(self.device)
-        else:
-            example_model = MyLittleSLALOM(unique_list, self.device, fix_importances=self.fix_importances, pad_token_id=self.pad_token_id).to(self.device)
-        if self.fit_sgd:
-            v_scores, s_scores, example_model = fit_sgd_rand(example_model, self.model, unique_list, torch.tensor(input_ids), num_eps=self.sg_epochs, 
-                    seq_len=3, lr=self.sgd_lr, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy,
-                    pad_token_id=self.pad_token_id, batch_size=self.sgd_batch_size)
-        else: # iterative
-            v_scores, s_scores, example_model = fit_iter_rand(example_model, self.model, unique_list, torch.tensor(input_ids),
-                    seq_len=3, offline_ds_size=self.n_samples, use_cls=self.use_cls, mode=self.sampling_strategy, pad_token_id=self.pad_token_id,
-                    batch_size=self.sgd_batch_size)
-        ret_list = []
-        for m in self.mode:
-            if m == "lin":
-                prescore = torch.exp(s_scores)*v_scores
-            elif m == "value":
-                prescore = v_scores
-            elif m == "removal":
-                alpha_i = torch.softmax(s_scores, dim=-1)
-                org_scores = torch.sum(alpha_i*v_scores)
-                prescore = alpha_i*(v_scores-org_scores)/(1.0 - alpha_i)
-            else:
-                prescore = s_scores
-
-            attribs = torch.zeros(len(input_ids), dtype=torch.float, device=self.device)
-            attribs = prescore[return_inverse]
-            ret_list.append(attribs.cpu().numpy())
-        self.curr_slalom_model = example_model
-        return np.stack(ret_list)
-
 class LinearRegressionDeletion:
+    """ A linear regression model fitted on deletions for comparision. """
     def __init__(self, model, n_samples=200, device="cuda", sampling_strategy="deletion", pad_token_id=0, use_cls=True, batch_size_sample=32):
         self.model = model.to(device)
         self.n_samples = n_samples

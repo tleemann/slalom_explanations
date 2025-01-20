@@ -6,7 +6,7 @@ import datasets
 from typing import Union, List
 from tqdm import tqdm
 
-from slalom_explanations.utils import Logger, LoggerAttMat
+from experiment_utils.utils import Logger, LoggerAttMat
 
 
 class DistilBert():

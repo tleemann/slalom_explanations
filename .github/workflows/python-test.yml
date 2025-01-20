@@ -31,4 +31,4 @@ jobs:
         conda init
         conda activate slalom
         conda list
-        export PYTHONPATH="."; python -m pytest
+        export PYTHONPATH="."; python3 -m pytest
