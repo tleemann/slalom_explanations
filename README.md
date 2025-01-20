@@ -39,11 +39,11 @@ Add the corresponding kernel to your existing JupyterLab installation by executi
 python -m ipykernel install --user --name slalom
 ```
 
-## Basic Usage.
+## Basic usage
 
 SLALOM contains an easy-to-use interface. The main commands to compute SLALOM explanations for Huggingface transformer models (SequenceClassification) are as follows:
 
-```
+```python
 from slalom_explanations import SLALOMLocalExplanantions 
 from slalom_explanations import slalom_scatter_plot
 
