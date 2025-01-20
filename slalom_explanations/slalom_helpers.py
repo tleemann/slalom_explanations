@@ -12,6 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 class MyLittleSLALOM(torch.nn.Module):
+    """ SLALOM model implementation as nn.Module. """
     def __init__(self, my_tokens, device="cpu", v_init=0.0, fix_importances=False, pad_token_id=0):
         super().__init__()
         self.device= device
@@ -57,6 +58,27 @@ class MyLittleSLALOM(torch.nn.Module):
 
     def get_values(self):
        return self.my_values[1:].detach()
+
+
+class SLALOMModelWrapper(torch.nn.Module):
+    """ Wrap models with different output format to the HF format. """
+    def __init__(self, model, wrap_in_dict, convert_to_tensor, extend_output):
+        self.model = model
+        self.wrap_in_dict = wrap_in_dict # wrap in dict with key "logits"
+        self.extend_output = extend_output # Extend shape from 1-D to 2-D
+
+    def forward(input_ids, attention_mask=None):
+        if attention_mask == None:
+            attention_mask = torch.ones_like(input_ids)
+        output = self.model(input_ids, attention_mask)
+        if self.wrap_in_dict
+            output = {"logits": output}
+        if self.convert_to_tensor:
+            output["logits"] = torch.from_numpy(output["logits"]).float()
+        if self.extend_output:
+            res_clm = output["logits"].flatten()
+            output["logits"] = torch.stack((torch.zeros_like(res_clm), res_clm), dim=1)
+        return output 
 
 
 def fit_slalom_sgd(my_ds, features, model_scores, num_eps=10, lr=2e-3, batch_size=32, use_cls=True):
