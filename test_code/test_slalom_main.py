@@ -6,7 +6,7 @@ from datasets import load_dataset, Dataset
 
 def get_small_imdb():
     """ Helper function to get IMDB dataset. """
-    imdb = load_dataset('imdb').with_format('torch', device="cpu") # format to pytorch tensors, but leave data on cpu
+    imdb = load_dataset('imdb', verification_mode='no_checks').with_format('torch', device="cpu") # format to pytorch tensors, but leave data on cpu
     imdb["train"] = imdb["train"].shuffle(seed=42).select(range(5000))
     imdb["test"] = imdb["test"].shuffle(seed=42).select(range(50))
     return imdb
@@ -16,7 +16,7 @@ def test_initialization_w_tfidf():
     imdbdata = get_small_imdb()
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased', use_fast=True)
     mymodel = TFIDFModel(imdbdata, tokenizer)
-    slalom_explainer = SLALOMLocalExplanantions(mymodel, tokenizer, modes=["value", "imp"])
+    slalom_explainer = SLALOMLocalExplanantions(mymodel, tokenizer, modes=["value", "imp"], device="cpu")
     input_example = "This is just an example."
     res = slalom_explainer.tokenize_and_explain(input_example)
     for token, expls in res:
@@ -27,7 +27,7 @@ def test_quickstart_model():
     """ Test the model in the quickstart notebook. """
     model = AutoModelForSequenceClassification.from_pretrained("lvwerra/distilbert-imdb")
     tokenizer = AutoTokenizer.from_pretrained("lvwerra/distilbert-imdb")
-    slalom_explainer = SLALOMLocalExplanantions(model, tokenizer, modes=["value", "imp", "lin"])
+    slalom_explainer = SLALOMLocalExplanantions(model, tokenizer, modes=["value", "imp", "lin"], device="cpu")
     example_text = "This movie was so frustrating. everything seemed energetic and i was totally prepared to have a good time. \
 i at least thought i\'d be able to stand it. but, i was wrong. first, the weird looping? it was like watching \" america\'s funniest home videos \". \
 the damn parents. i hated them so much. the stereo - typical latino family? i need to speak with the person responsible for this. we need to have a talk. \
