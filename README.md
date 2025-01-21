@@ -3,6 +3,8 @@
 
 # SLALOM: High-Fidelity Token-Level Explanations for Transformers
 
+[![pytest](https://github.com/tleemann/slalom_explanations/actions/workflows/python-test.yml/badge.svg?branch=refactoring)](https://github.com/tleemann/slalom_explanations/actions/workflows/python-test.yml)
+
 ## What is SLALOM?
 
 <p><img align="right" width="362" height="567" src="https://raw.githubusercontent.com/tleemann/slalom_explanations/main/SLALOM2.PNG"></p>
