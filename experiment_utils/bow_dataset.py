@@ -99,7 +99,7 @@ class SparseBoWDataset(Dataset):
 
     def __getitem__(self, index: int):
         if self.fixed_len:
-            sample_len = self.sample_len
+            sample_len = self.sample_length
         else:
             if self.binomial:
                 sample_len = torch.sum(torch.rand(self.sample_length)> 0.5).long()
