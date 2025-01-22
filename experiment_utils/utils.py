@@ -234,3 +234,32 @@ class LoggerAttMat(object):
         if not os.path.exists(p):
             os.makedirs(p)
         torch.save(importances, os.path.join(p, 'bow_importances.pt'))
+
+
+def compute_logits_for_single_token(tokenizer, model, n_max=10, use_cls=True, input_str="perfect", neutral_input="the", use_device="cuda"):
+    logit_results = []
+    cls_tok = torch.tensor([101])
+    input_tok = torch.tensor(tokenizer.convert_tokens_to_ids(input_str)).reshape(1)
+    neutal_tok = torch.tensor(tokenizer.convert_tokens_to_ids(neutral_input)).reshape(1)
+    sep_tok = torch.tensor([102])
+    ## Evaluate neutral input
+    if use_cls:
+        input = torch.cat((cls_tok, neutal_tok, sep_tok))
+    else:
+        input = neutal_tok
+        
+    with torch.no_grad():
+        logit_score = model(input.reshape(1,-1).to(use_device))["logits"]
+        logit_results.append(logit_score.detach().cpu())
+        
+        x = input_tok
+        for i in range(n_max):
+            #print(x)
+            if use_cls:
+                input = torch.cat((cls_tok, x, sep_tok))
+            else:
+                input = x
+            logit_score = model(input.reshape(1,-1).to(use_device))["logits"]
+            logit_results.append(logit_score.detach().cpu())
+            x = torch.cat((x, input_tok), dim=0)
+    return torch.stack(logit_results)
