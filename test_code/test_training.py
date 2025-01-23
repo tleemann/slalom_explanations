@@ -19,9 +19,11 @@ def test_training_linear(monkeypatch):
     args.layers = 2
     args.dataset = "sparsebow"
     args.model_path = os.getcwd()
+    args.logfile = "log.json"
 
     main(args)
 
     ## Delete the model again
     os.remove("sparsebow_bert_2_r0.pt")
+    os.remove("log.json")
     sys.argv = old_argv
