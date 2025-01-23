@@ -60,9 +60,10 @@ class SLALOMLocalExplanantions():
     def _wrap_model_if_needed(self, input_ids):
         """ Test of model outputs and wrap if necessary. """
         if self.use_cls:
-                org_inp =  torch.tensor([101] + input_ids + [102])
+                org_inp =  torch.tensor([101] + input_ids[:500] + [102]) #input ids may be longer than actual context length for some global explanations.
+                # Therefore cut to 500 tokens.
         else:
-            org_inp =  torch.tensor(input_ids)
+            org_inp =  torch.tensor(input_ids[500])
         org_inp = org_inp.reshape(1,-1)
         org_score = self.model(org_inp.to(self.device), attention_mask = torch.ones_like(org_inp).to(self.device))
 
