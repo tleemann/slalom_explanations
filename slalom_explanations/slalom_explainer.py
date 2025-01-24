@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-
 from slalom_explanations.slalom_helpers import sample_dataset
 from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM, fit_iter_rand, SLALOMModelWrapper
 
