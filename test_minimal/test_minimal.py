@@ -1,7 +1,10 @@
 ## Test quickstart notebook minimal requirements.
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from transformers import BertForSequenceClassification, BertConfig
 from slalom_explanations import SLALOMLocalExplanantions, slalom_highlight_plot
 from slalom_explanations import linearize_explanation, slalom_scatter_plot
+from slalom_explanations.slalom_helpers import SLALOMModelWrapper
+
 import matplotlib.pyplot as plt
 
 def test_quickstart_model():
@@ -32,4 +35,17 @@ it\'s so gloriously bad and full of badness that it is a movie of its own. what 
     slalom_scatter_plot(res_explanation, sizey=4, sizex=4, highlight_toks= highlight_toks, fontsize=8)
     linear_scores = linearize_explanation(res_explanation)
     slalom_highlight_plot(linear_scores, vmax=1)
-    
+
+
+def test_multiclass_model():
+    """ Test a multiclass untrained BERT model to see if the target_class attribute works."""
+    config = BertConfig()
+    config.num_labels = 15
+    mymodel  = BertForSequenceClassification(config)
+    tokenizer =  AutoTokenizer.from_pretrained("bert-base-uncased")
+    # Example from https://huggingface.co/manifesto-project/manifestoberta-xlm-roberta-56policy-topics-context-2024-1-1
+    input_sentence = "Human rights and international humanitarian law are fundamental pillars of a secure global system. These principles are under threat. \
+Some of the world's most powerful states choose to sell arms to human-rights abusing states. These principles are under threat."
+    slalom_explainer = SLALOMLocalExplanantions(mymodel, tokenizer, modes=["value", "imp"], target_class=10)
+    res_explanation = slalom_explainer.tokenize_and_explain(input_sentence)
+    assert isinstance(slalom_explainer.model, SLALOMModelWrapper)

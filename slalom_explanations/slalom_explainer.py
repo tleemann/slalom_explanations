@@ -4,11 +4,9 @@ from slalom_explanations.slalom_helpers import sample_dataset
 from slalom_explanations.slalom_helpers import fit_sgd_rand, MyLittleSLALOM, fit_iter_rand, SLALOMModelWrapper
 
 
-
-
 class SLALOMLocalExplanantions():
     def __init__(self, model, tokenizer=None, n_samples=500, device="cuda", modes=["lin"], sgd_batch_size=128, sgd_epochs=60, sgd_lr= 5e-3,
-            seq_len = 2, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True):
+            seq_len = 2, use_cls=True, sampling_strategy="short", fit_cls=False, fix_importances=False, pad_token_id=0, fit_sgd=True, target_class=None):
         """
             Initialize a SLALOM explainer with a model trained transformer model.
             :param: model: The trained ML model. We support models following the transformers frameworks interface for binary classification:
@@ -35,6 +33,8 @@ class SLALOMLocalExplanantions():
             :pad_token_id: which token to use as a padding token. This makes a difference for some model implementations, 
                 even if the pad tokens are masked by the attention mask as well. Be careful to pass the right token_id here.
             :param: fit_sgd: Fit the SLALOM model using SGD
+            :param: target_class: If there are more outputs, which class outputs to explain. It will be a one-vs all output, where the output for the target_class
+                is considered positive. The sum of all other classes are the negative side.
         """
         if hasattr(model, "to"):
             self.model = model.to(device)
@@ -55,12 +55,16 @@ class SLALOMLocalExplanantions():
         self.pad_token_id=pad_token_id
         self.fit_sgd = fit_sgd
         self.curr_slalom_model = None
+        self.target_class = target_class
 
     def _wrap_model_if_needed(self, input_ids):
         """ Test of model outputs and wrap if necessary. """
+        if isinstance(self.model, SLALOMModelWrapper): ## Already wrapped
+            return
+
         if self.use_cls:
-                org_inp =  torch.tensor([101] + input_ids[:500] + [102]) #input ids may be longer than actual context length for some global explanations.
-                # Therefore cut to 500 tokens.
+            org_inp =  torch.tensor([101] + input_ids[:500] + [102]) #input ids may be longer than actual context length for some global explanations.
+            # Therefore cut to 500 tokens.
         else:
             org_inp =  torch.tensor(input_ids[500])
         org_inp = org_inp.reshape(1,-1)
@@ -82,23 +86,24 @@ class SLALOMLocalExplanantions():
             raise ValueError(f"Unsupported output type {str(type(org_score))}. ")
 
         if inner_ret.shape[0] != 1:
-            raise ValueError(f"Unsupported output dimension. Expected 1, 1x1, or 1x2 outputs, got shape {inner_ret.shape}. ")
+            raise ValueError(f"Unsupported output dimension. Expected 1, 1x1, or 1xN outputs, got shape {inner_ret.shape}. ")
 
         extend_output = False
         if len(inner_ret.shape) == 1:
             extend_output = True
-        elif len(inner_ret.shape) == 2:
+        elif len(inner_ret.shape) == 2: # shape [1, X]
             if inner_ret.shape[1] == 1:
                 extend_output == True
             elif inner_ret.shape[1] == 2:
                 extend_output == False
-            else:
-                raise ValueError(f"Unsupported output dimension. Expected 1, 1x1, or 1x2 outputs, got shape {inner_ret.shape}. ")
+            else: ## Multiclass
+                if self.target_class is None or self.target_class >= inner_ret.shape[1] or self.target_class < 0:
+                   raise ValueError(f"For multiclass models you need to specifiy a valid target_class.") 
         else:
             raise ValueError(f"Unsupported number of output dimenstion. Expected 1 or 2 output dims, got shape {inner_ret.shape}. ")
 
-        if wrap_in_dict or convert_to_tensor or extend_output: # wrapping required
-            self.model = SLALOMModelWrapper(self.model, wrap_in_dict, convert_to_tensor, extend_output)
+        if wrap_in_dict or convert_to_tensor or extend_output or self.target_class is not None: # wrapping required
+            self.model = SLALOMModelWrapper(self.model, wrap_in_dict, convert_to_tensor, extend_output, self.target_class)
         
     def get_signed_importance_for_tokens(self, input_ids: list):
         """ Compute the explanations for a sequence of input ids. In this implementation, identical input tokens are treated identically.

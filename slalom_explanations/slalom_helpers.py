@@ -72,15 +72,18 @@ class MyLittleSLALOM(torch.nn.Module):
 
 class SLALOMModelWrapper(torch.nn.Module):
     """ Wrap models with different output format to the HF format. """
-    def __init__(self, model, wrap_in_dict, convert_to_tensor, extend_output):
-        self.model = model
+    def __init__(self, model, wrap_in_dict, convert_to_tensor, extend_output, target_class=None):
+        super().__init__()
+        self.submodel = model
         self.wrap_in_dict = wrap_in_dict # wrap in dict with key "logits"
         self.extend_output = extend_output # Extend shape from 1-D to 2-D
+        self.convert_to_tensor = convert_to_tensor
+        self.target_class = target_class
 
-    def forward(input_ids, attention_mask=None):
+    def forward(self, input_ids, attention_mask=None):
         if attention_mask == None:
             attention_mask = torch.ones_like(input_ids)
-        output = self.model(input_ids, attention_mask)
+        output = self.submodel(input_ids, attention_mask)
         if self.wrap_in_dict:
             output = {"logits": output}
         if self.convert_to_tensor:
@@ -88,7 +91,15 @@ class SLALOMModelWrapper(torch.nn.Module):
         if self.extend_output:
             res_clm = output["logits"].flatten()
             output["logits"] = torch.stack((torch.zeros_like(res_clm), res_clm), dim=1)
-        return output 
+        ## Output is now like [B, N-class], process logits to have one vs-all classification
+        if self.target_class is not None:
+            target_index_vector = torch.zeros(output["logits"].shape[1], dtype=torch.bool)
+            target_index_vector[self.target_class] = 1
+            target_logit = output["logits"][:, target_index_vector]
+            non_target_logit = output["logits"][:, ~target_index_vector]
+            all_class = torch.logsumexp(non_target_logit, 1)
+            output["logits"] = torch.stack((all_class.flatten(), target_logit.flatten()), dim=1)
+        return output
 
 
 def fit_slalom_sgd(my_ds, features, model_scores, num_eps=10, lr=2e-3, batch_size=32, use_cls=True):
