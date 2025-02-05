@@ -4,12 +4,12 @@ import sys
 from copy import deepcopy
 import os
 
+
 def test_training_linear(monkeypatch):
-    #monkeypatch.chdir(os.getcwd()) 
-    """ Train a model on the linear dataset for one epoch. """
+    """Train a model on the linear dataset for one epoch."""
     old_argv = deepcopy(sys.argv)
-    sys.argv = sys.argv[:1] ## Reset argv to only feature the script name argument.
-    args = arg_parse() ## get empty arg struct
+    sys.argv = sys.argv[:1]  ## Reset argv to only feature the script name argument.
+    args = arg_parse()  ## get empty arg struct
     ## Set some values:
     args.epochs = 1
     args.model = "bert"
