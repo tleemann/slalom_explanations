@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["slalom_explanations*", "test_minimal*"]
+exclude = ["test_full*", "experiment_utils*", "scripts*", "notebooks*", "lxp_models*"]
+
+[project]
+name = "slalom-explanations"
+version = "0.1.1"
+authors = [
+  { name="Tobias Leemann", email="tobias.leemann@uni-tuebingen.de" },
+  { name="Alina Fastowski", email="alina.fastowski@tum.de" },
+]
+description = "SLALOM Explanations for transformer models."
+readme = "README.md"
+requires-python = ">=3.8.1"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = {file = "LICENSE"}
+
+dependencies = [
+    "torch>=2.0.0",
+    "datasets >= 2.5.2",
+    "numpy >= 1.23.1",
+    "matplotlib >= 3.7",
+    "transformers >= 4.30.0",
+    "tqdm >= 4.65",
+    "scipy >= 1.10.1",
+    "scikit-learn >= 1.1.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/tleemann/slalom_explanations"
+Issues = "https://github.com/tleemann/slalom_explanations/issues"

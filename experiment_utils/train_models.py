@@ -1,8 +1,8 @@
-from slalom_explanations.transformer_models import DistilBert, GPT2, Bert, RoBERTa, Trainer
-from slalom_explanations.attribution_methods import BoW 
-from slalom_explanations.utils import Correlation, Logger, LoggerAttMat
-from slalom_explanations.json_logging import JSONLogger
-from slalom_explanations.bow_dataset import BoWDataset, MarkovChainDataset, SparseBoWDataset, SLALOMDataset
+from experiment_utils.transformer_models import DistilBert, GPT2, Bert, RoBERTa, Trainer
+from experiment_utils.attribution_methods import BoW 
+from experiment_utils.utils import Correlation, Logger, LoggerAttMat
+from experiment_utils.json_logging import JSONLogger
+from experiment_utils.bow_dataset import BoWDataset, SparseBoWDataset, SLALOMDataset
 from datasets import load_dataset, Dataset, DatasetDict
 import torch
 import os
@@ -18,8 +18,6 @@ import os
 
 #from line_profiler import LineProfiler
 
-
-
 def arg_parse():
     # add arguments
     parser = argparse.ArgumentParser()
@@ -28,7 +26,7 @@ def arg_parse():
     parser.add_argument('--lr', type=float, help='learning rate', default=5e-5)
     parser.add_argument('--layers', type=int, help='number of layers to use', default=6)
     parser.add_argument('--ground_truth', type=str, nargs="+", help='which ground truth importance to use, options: svm, nb, lr', default=[])
-    parser.add_argument('--dataset', type=str, help='dataset', default="imdb")
+    parser.add_argument('--dataset', type=str, default="imdb", help='dataset. supported datsets are imdb, yelp, imdbbow, sparsebow, slalom, slalom200')
     parser.add_argument('--device', type=str, help='device to use for training', default="cuda:0")
     parser.add_argument('--model', type=str, help='model architectures', default="distilbert")
     parser.add_argument('--n_heads', type=int, help='model number of attention heads', default=12)
@@ -64,10 +62,12 @@ def compute_ref_importances(config, model, use_dataset, tokenizer, max_seq_len) 
     return importances
 
 
-#@profile
-def main():
-    config = arg_parse()
+def main(config = None):
+    if config is None:
+        config = arg_parse()
+
     device = config.device
+    print("device=", device, "cwd", os.getcwd())
     # Init model
     if config.model == "distilbert":
         model = DistilBert(n_layers=config.layers, n_heads=config.n_heads, pretrained=config.pretrained)
@@ -120,11 +120,6 @@ def main():
         ds_copy.length = 100
         dataset["test"] = ds_copy
         req_tokenization = False
-    elif config.dataset == "markov":
-        myds = MarkovChainDataset(tokenizer, neutral_words_list = ["the", "we", "movie"], pos_words_list = ["best", "perfect", "good"], neg_words_list=["worst", "poor"])
-        myds_test = MarkovChainDataset(tokenizer, neutral_words_list = ["the", "we", "movie"], pos_words_list = ["best", "perfect", "good"], neg_words_list=["worst", "poor"], ds_length=50)
-        dataset = {"train": myds, "test": myds_test}
-        req_tokenization = False
     elif config.dataset == "sparsebow": ## For experiment A (Motivation)
         words_dict = {"the": (0.2, 0.0), "we": (0.2, 0.0), "movie": (0.2, 0.0), "watch": (0.2, 0.0),
               "best": (0.06, 1.0), "perfect": (0.06, 1.5), "good": (0.08, 0.7),
@@ -144,9 +139,9 @@ def main():
             myds_test = SparseBoWDataset(tokenizer, all_words_dict =  words_dict, ds_length=50, fixed_len=fixed, binomial_sampling=binomial)
         dataset = {"train": myds, "test": myds_test}
         req_tokenization = False
-    elif config.dataset == "salo" or config.dataset == "salo200":
-        if config.dataset == "salo200":
-            words_dict = torch.load("salo_200words.pt")
+    elif config.dataset == "slalom" or config.dataset == "slalom200":
+        if config.dataset == "slalom200":
+            words_dict = torch.load("datasets/slalom_200words.pt")
             ## Vocab size
             words_dict = {k: words_dict[k] for k in list(words_dict.keys())[:config.vocab_size]}
         else:
@@ -155,7 +150,9 @@ def main():
         myds_test = SLALOMDataset(tokenizer, all_words_dict =  words_dict, ds_length=50, start_tok="[CLS]", sample_max_length=config.sample_len)
         dataset = {"train": myds, "test": myds_test}
         req_tokenization = False
-    
+    else:
+        raise ValueError(f"Unsupported dataset {config.dataset}")
+
     logger = JSONLogger(config.logfile, ["dataset", "model", "layers", "pretrained", "runid"])
 
     ref_importances = None

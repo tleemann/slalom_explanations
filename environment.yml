@@ -1,31 +1,14 @@
-name: transformer
+name: slalom
 channels:
   - conda-forge
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1
-  - _openmp_mutex=5.1
-  - asttokens=2.2.1
-  - backcall=0.2.0
-  - backports=1.0
-  - backports.functools_lru_cache=1.6.4
-  - bzip2=1.0.8
-  - ca-certificates=2023.5.7
   - debugpy=1.5.1
   - decorator=5.1.1
-  - entrypoints=0.4
-  - executing=1.2.0
   - ipykernel=6.15.0
   - ipython=8.14.0
   - jedi=0.18.2
   - jupyter_core=5.3.1
-  - ld_impl_linux-64=2.38
-  - libffi=3.4.4
-  - libgcc-ng=11.2.0
-  - libgomp=11.2.0
-  - libsodium=1.0.18
-  - libstdcxx-ng=11.2.0
-  - libuuid=1.41.5
   - matplotlib-inline=0.1.6
   - ncurses=6.4
   - nest-asyncio=1.5.6
@@ -50,6 +33,7 @@ dependencies:
   - setuptools=67.8.0
   - six=1.16.0
   - sqlite=3.41.2
+  - shap=0.42.1
   - stack_data=0.6.2
   - tk=8.6.12
   - traitlets=5.9.0
@@ -70,8 +54,6 @@ dependencies:
       - arrow==1.2.3
       - async-timeout==4.0.2
       - attrs==23.1.0
-      - beautifulsoup4==4.12.2
-      - bertviz==1.4.0
       - bleach==6.0.0
       - boto3==1.26.155
       - botocore==1.29.155
@@ -133,6 +115,7 @@ dependencies:
       - notebook==6.5.4
       - notebook-shim==0.2.3
       - numpy==1.25.0
+      - numba
       - nvidia-cublas-cu11==11.10.3.66
       - nvidia-cuda-cupti-cu11==11.7.101
       - nvidia-cuda-nvrtc-cu11==11.7.99
@@ -153,6 +136,7 @@ dependencies:
       - pycparser==2.21
       - pyparsing==3.0.9
       - pyre-extensions==0.0.29
+      - pytest==8.3.4
       - python-json-logger==2.0.7
       - pytz==2023.3
       - pywavelets==1.4.1
@@ -172,6 +156,7 @@ dependencies:
       - seaborn==0.12.2
       - send2trash==1.8.2
       - sentencepiece==0.1.99
+      - sentence-transformers
       - sniffio==1.3.0
       - soupsieve==2.4.1
       - sympy==1.12
@@ -197,4 +182,4 @@ dependencies:
       - xformers==0.0.20
       - xxhash==3.2.0
       - yarl==1.9.2
-prefix: /home/felix/anaconda3/envs/transformer
+prefix: /home

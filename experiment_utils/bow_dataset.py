@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import Dataset
 from torch.distributions import Categorical
 from torch.nn import Parameter
-from slalom_explanations.attribution_methods import BoW
+from experiment_utils.attribution_methods import BoW
 
 class BoWDataset(Dataset):
     """ A dataset that follows a BoW distribution. """
@@ -45,37 +45,6 @@ class BoWDataset(Dataset):
     def __len__(self):
         return self.length
 
-
-# A dataset class that represent a markov chain.
-class MarkovChainDataset(Dataset):
-    """ A dataset that follows the markov process distribution. """
-
-    def __init__(self, tokenizer, sample_length = 30, ds_length=5000, pos_words_list = ["best"], neutral_words_list = ["the"], neg_words_list = ["worst"], start_tok = "[CLS]", end_tok="[SEP]"):
-        """ Init the simulated dataset with a length len. (determines the size of an epoch,
-            however each sample is randomly drawn new, i.e., the getitem function is non-deterministic.)
-        
-        """
-        self.length = ds_length
-        self.sample_length = sample_length
-        self.start_tok = torch.tensor(tokenizer.convert_tokens_to_ids([start_tok])) if start_tok is not None else torch.tensor([])
-        self.end_tok = torch.tensor(tokenizer.convert_tokens_to_ids([end_tok])) if start_tok is not None else torch.tensor([])
-        self.pos_list = torch.tensor(tokenizer.convert_tokens_to_ids(pos_words_list))
-        self.neg_list = torch.tensor(tokenizer.convert_tokens_to_ids(neg_words_list))
-        self.neut_list = torch.tensor(tokenizer.convert_tokens_to_ids(neutral_words_list))
-
-    def __getitem__(self, index: int):
-        label = (torch.rand([]) > 0.5).long()
-        background = self.neut_list[torch.randint(0, len(self.neut_list), size=(self.sample_length,))]
-        gt_pos = torch.randint(0, self.sample_length, size=())
-        signal = self.pos_list[torch.randint(0, len(self.pos_list), size=())] if label.item() == 1 else self.neg_list[torch.randint(0, len(self.neg_list), size=())]
-        background[gt_pos] = signal
-        features = torch.cat((self.start_tok, background, self.end_tok))
-        return {"label": label, "input_ids": features, "attention_mask": torch.ones_like(features), "gt_pos": gt_pos}
-    
-    def __len__(self):
-        return self.length
-    
-
 # A dataset class that represent a markov chain.
 class SparseBoWDataset(Dataset):
     """ A dataset that follows a sparse Bag-of-Words distribution. """
@@ -99,7 +68,7 @@ class SparseBoWDataset(Dataset):
 
     def __getitem__(self, index: int):
         if self.fixed_len:
-            sample_len = self.sample_len
+            sample_len = self.sample_length
         else:
             if self.binomial:
                 sample_len = torch.sum(torch.rand(self.sample_length)> 0.5).long()
@@ -161,50 +130,4 @@ class SLALOMDataset(Dataset):
     
     def __len__(self):
         return self.length
-
-
-class MyLittleSLALOM(torch.nn.Module):
-    def __init__(self, my_tokens, device="cpu"):
-        super().__init__()
-        self.device= device
-        self.indexer = torch.zeros(torch.max(my_tokens)+1, dtype=torch.long).to(device)
-        self.indexer[my_tokens] = torch.arange(len(my_tokens)).to(device)+1 # map zero to zero.
-        self.my_importance = torch.zeros(len(my_tokens)+1).to(device)
-        self.my_importance[0] = torch.finfo(torch.float).min
-        self.my_importance = Parameter(self.my_importance)
-        self.my_values = Parameter(torch.zeros(len(my_tokens)+1))
-
-    def forward(self, x):
-        tok_values = self.my_values[self.indexer[x]]
-        tok_importance = self.my_importance[self.indexer[x]]
-        #print(tok_importance)
-        return torch.stack((torch.zeros(len(x), device=self.device), torch.sum(torch.softmax(tok_importance, dim=-1)*tok_values, axis=1)), dim=1)
-
-    def _s_val_to_softmax(self, features):
-        s_vals = self.my_importance[1:]
-        features_pres = (features > 0).float() # 1 if some occurances. 
-        feature_weights = features_pres * s_vals.reshape(1, -1)
-        # account for mutliplicities. if atoken appears more then ones, e.g. n times
-        # We have exp(s + log(n)) = exp(log(n)) * exp(s) = n+exp(s)
-        feature_weights[features_pres>0] += torch.log(features[features_pres>0])
-        feature_weights[features_pres == 0] = torch.finfo(torch.float).min
-        feature_weights = torch.softmax(feature_weights, dim=1)
-        return feature_weights
-
-    def forward_feature_vects(self, x):
-        alphas = self._s_val_to_softmax(x)
-        v_vals = self.my_values[1:]
-        output = torch.sum(alphas * v_vals.reshape(1, -1), dim=-1)
-        return torch.stack((torch.zeros(len(x)).to(self.device), output.to(self.device)), dim=1)
-
-    def set_parameters(self, v, s):
-        self.my_importance.data[1:] = s
-        self.my_values.data[1:] = v
-
-    def get_importances(self):
-        myrawimportance = self.my_importance[1:].detach()
-        return myrawimportance - myrawimportance.mean()
-
-    def get_values(self):
-       return self.my_values[1:].detach()
 
