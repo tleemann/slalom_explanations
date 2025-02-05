@@ -11,7 +11,7 @@ exclude = ["test_full*", "experiment_utils*", "scripts*", "notebooks*", "lxp_mod
 
 [project]
 name = "slalom-explanations"
-version = "0.1.1"
+version = "0.1.2"
 authors = [
   { name="Tobias Leemann", email="tobias.leemann@uni-tuebingen.de" },
   { name="Alina Fastowski", email="alina.fastowski@tum.de" },
